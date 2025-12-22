@@ -86,6 +86,10 @@ services:
       - --spi-phone-default-testrealm-phone-default-region=${PHONE_DEFAULT_REGION:-IN}
       - --spi-phone-default-testrealm-compatible=${PHONE_COMPATIBLE:-false}
       - --spi-phone-default-testrealm-otp-expires=${OTP_EXPIRES:-3600}
+      # MSG91 sender configuration (used by msg91 sender impl)
+      - --spi-message-sender-service.msg91.url=${MSG91_URL:-https://control.msg91.com/api/v5/flow}
+      - --spi-message-sender-service.msg91.authKey=${MSG91_AUTH_KEY:-CHANGE_ME}
+      - --spi-message-sender-service.msg91.templateId=${MSG91_TEMPLATE_ID:-CHANGE_ME}
     restart: unless-stopped
 
 volumes:
