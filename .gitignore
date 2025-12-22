@@ -1,0 +1,16 @@
+.tmp/
+.env
+node_modules/
+npm-debug.log*
+yarn-error.log*
+*.log
+
+# Build artifacts / local caches
+.tools/
+providers/*.jar
+themes/*.jar
+
+# OS / editor
+Thumbs.db
+
+

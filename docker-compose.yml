@@ -1,0 +1,72 @@
+services:
+  artifacts:
+    build:
+      context: ./docker/builder
+    container_name: keycloak-artifacts-builder
+    environment:
+      # Override any of these in .env if needed
+      PHONE_PROVIDER_REPO_URL: ${PHONE_PROVIDER_REPO_URL:-https://github.com/shivain22/keycloak-phone-provider.git}
+      PHONE_PROVIDER_BRANCH: ${PHONE_PROVIDER_BRANCH:-master}
+      THEME_REPO_URL: ${THEME_REPO_URL:-https://github.com/atpar-org/rms-auth-theme-plugin.git}
+      THEME_BRANCH: ${THEME_BRANCH:-main}
+      THEME_JAR_NAME: ${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}
+      # Optional (needed if a repo is private): GitHub token with repo read access
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # Shared output for Keycloak provider/theme jars
+      - ./providers:/work/providers
+      # Maven cache to avoid flaky re-downloads
+      - m2_cache:/m2
+    restart: "no"
+
+  db:
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
+    container_name: keycloak-db
+    depends_on:
+      artifacts:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: ${KC_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak}:${KEYCLOAK_VERSION:-latest}
+    container_name: keycloak
+    depends_on:
+      artifacts:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    volumes:
+      # Make the built jars available to Keycloak
+      - ./providers:/opt/keycloak/providers
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KC_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
+    command: ["start-dev", "--http-port=8080", "--hostname-strict=false"]
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  m2_cache:
+
+
