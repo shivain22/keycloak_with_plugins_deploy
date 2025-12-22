@@ -11,7 +11,7 @@ Keycloak waits for Postgres using a Postgres `healthcheck` + `depends_on: condit
 
 1. Create your `.env`:
 
-- Copy `env.template` to `.env`
+- Copy `env.template` (or `env.example`) to `.env`
 - Adjust values as needed (ports, admin password, DB password, versions)
 
 2. Start (build artifacts first, then Postgres, then Keycloak):
@@ -47,5 +47,6 @@ See `env.template` for defaults:
 - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`
  - `PHONE_PROVIDER_REPO_URL`, `PHONE_PROVIDER_BRANCH`
  - `THEME_REPO_URL`, `THEME_BRANCH`, `THEME_JAR_NAME`
+ - `SPI_PHONE_*` (phone provider SPI config used on Keycloak startup)
 
 

@@ -49,6 +49,8 @@ services:
     volumes:
       # Make the built jars available to Keycloak
       - ./providers:/opt/keycloak/providers
+      # Import realms on first start (or when --import-realm is used)
+      - ./realm-import:/opt/keycloak/data/import
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
@@ -62,7 +64,22 @@ services:
       KC_METRICS_ENABLED: "true"
     ports:
       - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
-    command: ["start-dev", "--http-port=8080", "--hostname-strict=false"]
+    command:
+      - start-dev
+      - --http-port=8080
+      - --hostname-strict=false
+      - --import-realm
+      - --spi-phone-default-service=${SPI_PHONE_DEFAULT_SERVICE:-msg91}
+      - --spi-phone-default-token-expires-in=${SPI_PHONE_DEFAULT_TOKEN_EXPIRES_IN:-60}
+      - --spi-phone-default-source-hour-maximum=${SPI_PHONE_DEFAULT_SOURCE_HOUR_MAXIMUM:-10}
+      - --spi-phone-default-target-hour-maximum=${SPI_PHONE_DEFAULT_TARGET_HOUR_MAXIMUM:-3}
+      - --spi-phone-default-testrealm-duplicate-phone=${SPI_PHONE_DEFAULT_TESTREALM_DUPLICATE_PHONE:-false}
+      - --spi-phone-default-testrealm-default-number-regex=${SPI_PHONE_DEFAULT_TESTREALM_DEFAULT_NUMBER_REGEX:-^\+?\d+$}
+      - --spi-phone-default-testrealm-valid-phone=${SPI_PHONE_DEFAULT_TESTREALM_VALID_PHONE:-true}
+      - --spi-phone-default-testrealm-canonicalize-phone-numbers=${SPI_PHONE_DEFAULT_TESTREALM_CANONICALIZE_PHONE_NUMBERS:-E164}
+      - --spi-phone-default-testrealm-phone-default-region=${SPI_PHONE_DEFAULT_TESTREALM_PHONE_DEFAULT_REGION:-IN}
+      - --spi-phone-default-testrealm-compatible=${SPI_PHONE_DEFAULT_TESTREALM_COMPATIBLE:-false}
+      - --spi-phone-default-testrealm-otp-expires=${SPI_PHONE_DEFAULT_TESTREALM_OTP_EXPIRES:-3600}
     restart: unless-stopped
 
 volumes:
