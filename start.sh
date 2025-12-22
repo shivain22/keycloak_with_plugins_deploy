@@ -28,15 +28,24 @@ done
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&2; exit 1; }
 
+echo "==> Building artifacts (providers) ..."
+# Build the image first if --rebuild was requested
+if [[ "${REBUILD}" == "1" ]]; then
+  echo "  (rebuilding artifacts image...)"
+  docker compose build artifacts
+fi
+
+# Use 'docker compose run' for one-shot containers (properly handles exit codes)
+if ! docker compose run --rm artifacts; then
+  echo "ERROR: Artifacts build failed!" >&2
+  exit 1
+fi
+
+echo "==> Starting Postgres + Keycloak ..."
 COMPOSE_BUILD_FLAG=""
 if [[ "${REBUILD}" == "1" ]]; then
   COMPOSE_BUILD_FLAG="--build"
 fi
-
-echo "==> Building artifacts (providers) ..."
-docker compose up ${COMPOSE_BUILD_FLAG} --abort-on-container-exit artifacts
-
-echo "==> Starting Postgres + Keycloak ..."
 docker compose up ${COMPOSE_BUILD_FLAG} -d
 
 echo "==> Done."
