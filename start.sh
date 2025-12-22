@@ -30,7 +30,7 @@ command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&
 
 echo "==> Building artifacts (providers) ..."
 # Build the image first if --rebuild was requested
-if [[ "${REBUILD}" == "1" ]]; then
+if [ "${REBUILD}" = "1" ]; then
   echo "  (rebuilding artifacts image...)"
   docker compose build artifacts
 fi
@@ -43,15 +43,23 @@ fi
 
 echo "==> Starting Postgres + Keycloak ..."
 COMPOSE_BUILD_FLAG=""
-if [[ "${REBUILD}" == "1" ]]; then
+if [ "${REBUILD}" = "1" ]; then
   COMPOSE_BUILD_FLAG="--build"
 fi
 docker compose up ${COMPOSE_BUILD_FLAG} -d
 
 echo "==> Done."
-echo "Keycloak should be available at: http://localhost:8080"
+# Read KEYCLOAK_HTTP_PORT from .env file (docker compose reads it automatically)
+KEYCLOAK_PORT="8080"
+if [ -f .env ]; then
+  ENV_PORT=$(grep -E "^KEYCLOAK_HTTP_PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "")
+  if [ -n "${ENV_PORT}" ]; then
+    KEYCLOAK_PORT="${ENV_PORT}"
+  fi
+fi
+echo "Keycloak should be available at: http://localhost:${KEYCLOAK_PORT}"
 
-if [[ "${TAIL_LOGS}" == "1" ]]; then
+if [ "${TAIL_LOGS}" = "1" ]; then
   echo "==> Tailing Keycloak logs (Ctrl+C to stop) ..."
   docker compose logs -f --tail 200 keycloak
 fi
