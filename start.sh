@@ -2,6 +2,7 @@
 set -euo pipefail
 
 # One-command bootstrap for this repo.
+# - Stops any existing containers
 # - Builds & runs the "artifacts" one-shot container (produces ./providers/*.jar)
 # - Starts Postgres + Keycloak
 #
@@ -27,6 +28,9 @@ for arg in "$@"; do
 done
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&2; exit 1; }
+
+echo "==> Stopping existing containers (if any) ..."
+docker compose down 2>/dev/null || true
 
 echo "==> Building artifacts (providers) ..."
 # Build the image first if --rebuild was requested
