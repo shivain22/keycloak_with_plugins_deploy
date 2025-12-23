@@ -63,7 +63,7 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       # Proxy configuration for reverse proxy/load balancer
-      KC_PROXY: ${KC_PROXY:-edge}
+      KC_PROXY: ${KC_PROXY:-xforwarded}
       KC_HOSTNAME: ${KC_HOSTNAME:-}
       KC_HOSTNAME_STRICT_HTTPS: ${KC_HOSTNAME_STRICT_HTTPS:-false}
       # Provider runtime configuration (read by the phone provider)
@@ -76,7 +76,7 @@ services:
       - start-dev
       - --http-port=8080
       - --hostname-strict=false
-      - --proxy-headers=${KC_PROXY:-edge}
+      - --proxy-headers=${KC_PROXY:-xforwarded}
       - --import-realm
       # SMS Provider Configuration
       - --spi-phone-default-service=${SMS_PROVIDER:-msg91}

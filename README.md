@@ -16,6 +16,17 @@ Keycloak waits for Postgres using a Postgres `healthcheck` + `depends_on: condit
 
 2. Start (build artifacts first, then Postgres, then Keycloak):
 
+**Option A: Using the start script (recommended)**
+
+- **Linux/macOS:** `./start.sh`
+- **Windows:** `.\start.ps1`
+
+Optional flags:
+- `--rebuild` / `-rebuild`: Force rebuild of artifacts image
+- `--logs` / `-logs`: Tail Keycloak logs after start
+
+**Option B: Manual start**
+
 ```bash
 docker compose up --build -d
 ```
