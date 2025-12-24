@@ -29,6 +29,8 @@ services:
       POSTGRES_DB: ${KC_DB_NAME:-keycloak}
       POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
       POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -63,7 +65,8 @@ services:
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
       # Proxy configuration for reverse proxy/load balancer
-      KC_PROXY: ${KC_PROXY:-xforwarded}
+      KC_PROXY: ${KC_PROXY:-edge}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
       KC_HOSTNAME: ${KC_HOSTNAME:-}
       KC_HOSTNAME_STRICT_HTTPS: ${KC_HOSTNAME_STRICT_HTTPS:-false}
       # Provider runtime configuration (read by the phone provider)
@@ -76,7 +79,7 @@ services:
       - start-dev
       - --http-port=8080
       - --hostname-strict=false
-      - --proxy-headers=${KC_PROXY:-xforwarded}
+      - --proxy-headers=${KC_PROXY_HEADERS:-xforwarded}
       - --import-realm
       # SMS Provider Configuration
       - --spi-phone-default-service=${SMS_PROVIDER:-msg91}
