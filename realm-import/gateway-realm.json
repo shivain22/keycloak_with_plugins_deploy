@@ -52,7 +52,7 @@
       "description": "Service account client for gateway to manage realms via Admin API",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "gateway-admin-secret-change-me",
+      "secret": "K8mN2pQ7rT5vW9xZ1aB3cD4eF6gH8j",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -78,11 +78,13 @@
       ]
     },
     {
-      "clientId": "gateway-frontend",
-      "name": "Gateway Frontend Client",
-      "description": "Public client for gateway frontend application",
+      "clientId": "gateway-web",
+      "name": "Gateway Web Client",
+      "description": "Web client for gateway application",
       "enabled": true,
-      "publicClient": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h",
+      "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
@@ -91,6 +93,7 @@
       "rootUrl": "http://localhost:8082",
       "adminUrl": "http://localhost:8082",
       "attributes": {
+        "pkce.code.challenge.method": "",
         "access.token.lifespan": "300",
         "post.logout.redirect.uris": "http://localhost:9000"
       },
@@ -117,12 +120,12 @@
       ]
     },
     {
-      "clientId": "gateway-backend",
-      "name": "Gateway Backend Client",
-      "description": "Confidential client for gateway backend application",
+      "clientId": "gateway-mobile",
+      "name": "Gateway Mobile Client",
+      "description": "Mobile client for gateway application with PKCE",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "gateway-backend-secret-change-me",
+      "secret": "L9mN3pQ6rT8vW2xZ4aB5cD7eF9gH1j",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
@@ -132,6 +135,7 @@
       "rootUrl": "http://localhost:8082",
       "adminUrl": "http://localhost:8082",
       "attributes": {
+        "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
         "post.logout.redirect.uris": "http://localhost:9000"
       },
