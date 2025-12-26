@@ -86,14 +86,14 @@ services:
       - --spi-phone-default-token-expires-in=${SMS_TOKEN_EXPIRES:-60}
       - --spi-phone-default-source-hour-maximum=${SMS_SOURCE_HOUR_MAX:-10}
       - --spi-phone-default-target-hour-maximum=${SMS_TARGET_HOUR_MAX:-3}
-      # Phone Provider Configuration (realm-scoped for "testrealm")
-      - --spi-phone-default-testrealm-duplicate-phone=${DUPLICATE_PHONE:-false}
-      - --spi-phone-default-testrealm-default-number-regex=${PHONE_REGEX:-^\\+?\\d+$}
-      - --spi-phone-default-testrealm-valid-phone=${VALID_PHONE:-true}
-      - --spi-phone-default-testrealm-canonicalize-phone-numbers=${CANONICALIZE_PHONE:-E164}
-      - --spi-phone-default-testrealm-phone-default-region=${PHONE_DEFAULT_REGION:-IN}
-      - --spi-phone-default-testrealm-compatible=${PHONE_COMPATIBLE:-false}
-      - --spi-phone-default-testrealm-otp-expires=${OTP_EXPIRES:-3600}
+      # Phone Provider Configuration (realm-scoped for "ujwal")
+      - --spi-phone-default-ujwal-duplicate-phone=${DUPLICATE_PHONE:-false}
+      - --spi-phone-default-ujwal-default-number-regex=${PHONE_REGEX:-^\\+?\\d+$}
+      - --spi-phone-default-ujwal-valid-phone=${VALID_PHONE:-true}
+      - --spi-phone-default-ujwal-canonicalize-phone-numbers=${CANONICALIZE_PHONE:-E164}
+      - --spi-phone-default-ujwal-phone-default-region=${PHONE_DEFAULT_REGION:-IN}
+      - --spi-phone-default-ujwal-compatible=${PHONE_COMPATIBLE:-false}
+      - --spi-phone-default-ujwal-otp-expires=${OTP_EXPIRES:-3600}
       # MSG91 sender configuration (used by msg91 sender impl)
       - --spi-message-sender-service.msg91.url=${MSG91_URL:-https://control.msg91.com/api/v5/flow}
       - --spi-message-sender-service.msg91.authKey=${MSG91_AUTH_KEY:-CHANGE_ME}

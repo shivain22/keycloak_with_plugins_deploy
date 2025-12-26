@@ -1,0 +1,227 @@
+{
+  "realm": "ujwal",
+  "enabled": true,
+  "displayName": "Ujwal Restaurant",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "rememberMe": true,
+  "sslRequired": "external",
+  "attributes": {
+    "userProfileEnabled": "true",
+    "frontendUrl": ""
+  },
+  "userProfileConfig": {
+    "attributes": [
+      {
+        "name": "firstName",
+        "displayName": "First name",
+        "validations": {},
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "required": false
+      },
+      {
+        "name": "lastName",
+        "displayName": "Last name",
+        "validations": {},
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "required": false
+      },
+      {
+        "name": "email",
+        "displayName": "Email",
+        "validations": {
+          "email": {}
+        },
+        "permissions": {
+          "view": ["admin", "user"],
+          "edit": ["admin", "user"]
+        },
+        "required": false
+      }
+    ]
+  },
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_ADMIN",
+        "description": "Restaurant administrator role",
+        "composite": false
+      },
+      {
+        "name": "ROLE_WAITER",
+        "description": "Waiter role",
+        "composite": false
+      },
+      {
+        "name": "ROLE_CASHIER",
+        "description": "Cashier role",
+        "composite": false
+      },
+      {
+        "name": "ROLE_CHEF",
+        "description": "Chef role",
+        "composite": false
+      },
+      {
+        "name": "ROLE_CUSTOMER",
+        "description": "Customer role",
+        "composite": false
+      },
+      {
+        "name": "ROLE_ANONYMOUS",
+        "description": "Anonymous user role",
+        "composite": false
+      },
+      {
+        "name": "user",
+        "description": "Default user role"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "emailVerified": false,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ROLE_ADMIN",
+        "user"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "ujwal-web",
+      "name": "Ujwal Web Client",
+      "description": "Web client for Ujwal restaurant",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ujwal-web",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "",
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "role_list",
+        "profile",
+        "roles",
+        "email",
+        "restaurant-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "redirectUris": [
+        "+"
+      ]
+    },
+    {
+      "clientId": "ujwal-mobile",
+      "name": "Ujwal Mobile Client",
+      "description": "Mobile client for Ujwal restaurant with PKCE",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ujwal-mobile",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "role_list",
+        "profile",
+        "roles",
+        "email",
+        "restaurant-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "+"
+      ],
+      "redirectUris": [
+        "+"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "restaurant-roles",
+      "description": "Custom scope to add restaurant roles as flat array in token claims",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-array-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "role_list",
+    "profile",
+    "email",
+    "roles",
+    "web-origins",
+    "acr",
+    "restaurant-roles"
+  ],
+  "defaultOptionalClientScopes": [
+    "offline_access",
+    "address",
+    "phone",
+    "microprofile-jwt"
+  ]
+}

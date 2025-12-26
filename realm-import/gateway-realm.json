@@ -1,0 +1,205 @@
+{
+  "realm": "gateway",
+  "enabled": true,
+  "displayName": "Gateway Realm",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "rememberMe": true,
+  "sslRequired": "external",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "roles": {
+    "realm": [
+      {
+        "name": "ROLE_ADMIN",
+        "description": "Administrator role for gateway operations",
+        "composite": false
+      },
+      {
+        "name": "user",
+        "description": "Default user role"
+      }
+    ]
+  },
+  "users": [
+    {
+      "username": "gwadmin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Gateway",
+      "lastName": "Administrator",
+      "email": "gwadmin@gateway.local",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "gwadmin",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ROLE_ADMIN"
+      ]
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "gateway-admin-client",
+      "name": "Gateway Admin Client",
+      "description": "Service account client for gateway to manage realms via Admin API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "gateway-admin-secret-change-me",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "role_list",
+        "profile",
+        "roles",
+        "email",
+        "gateway-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "gateway-frontend",
+      "name": "Gateway Frontend Client",
+      "description": "Public client for gateway frontend application",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "baseUrl": "http://localhost:8082",
+      "rootUrl": "http://localhost:8082",
+      "adminUrl": "http://localhost:8082",
+      "attributes": {
+        "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "http://localhost:9000"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "role_list",
+        "profile",
+        "roles",
+        "email",
+        "gateway-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "http://localhost:8082",
+        "http://localhost:9000"
+      ],
+      "redirectUris": [
+        "http://localhost:9000/login/oauth2/code/oidc"
+      ]
+    },
+    {
+      "clientId": "gateway-backend",
+      "name": "Gateway Backend Client",
+      "description": "Confidential client for gateway backend application",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "gateway-backend-secret-change-me",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "baseUrl": "http://localhost:8082",
+      "rootUrl": "http://localhost:8082",
+      "adminUrl": "http://localhost:8082",
+      "attributes": {
+        "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "http://localhost:9000"
+      },
+      "defaultClientScopes": [
+        "web-origins",
+        "role_list",
+        "profile",
+        "roles",
+        "email",
+        "gateway-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "http://localhost:8082",
+        "http://localhost:9000"
+      ],
+      "redirectUris": [
+        "http://localhost:9000/login/oauth2/code/oidc"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "gateway-roles",
+      "description": "Custom scope to add roles as flat array in token claims for gateway",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "roles-array-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "defaultDefaultClientScopes": [
+    "role_list",
+    "profile",
+    "email",
+    "roles",
+    "web-origins",
+    "acr",
+    "gateway-roles"
+  ],
+  "defaultOptionalClientScopes": [
+    "offline_access",
+    "address",
+    "phone",
+    "microprofile-jwt"
+  ]
+}
+
