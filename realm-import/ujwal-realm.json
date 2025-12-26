@@ -10,44 +10,7 @@
   "rememberMe": true,
   "sslRequired": "external",
   "attributes": {
-    "userProfileEnabled": "true",
-    "frontendUrl": ""
-  },
-  "userProfileConfig": {
-    "attributes": [
-      {
-        "name": "firstName",
-        "displayName": "First name",
-        "validations": {},
-        "permissions": {
-          "view": ["admin", "user"],
-          "edit": ["admin", "user"]
-        },
-        "required": false
-      },
-      {
-        "name": "lastName",
-        "displayName": "Last name",
-        "validations": {},
-        "permissions": {
-          "view": ["admin", "user"],
-          "edit": ["admin", "user"]
-        },
-        "required": false
-      },
-      {
-        "name": "email",
-        "displayName": "Email",
-        "validations": {
-          "email": {}
-        },
-        "permissions": {
-          "view": ["admin", "user"],
-          "edit": ["admin", "user"]
-        },
-        "required": false
-      }
-    ]
+    "userProfileEnabled": "true"
   },
   "roles": {
     "realm": [
