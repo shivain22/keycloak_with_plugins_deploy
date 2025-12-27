@@ -350,7 +350,7 @@
           "authenticationFlow": false
         },
         {
-          "authenticator": "auth-phone-username-password-form-with-auto-registration",
+          "authenticator": "auth-phone-auto-reg-form",
           "requirement": "REQUIRED",
           "priority": 30,
           "userSetupAllowed": false,
