@@ -53,6 +53,9 @@ services:
       - ./providers:/opt/keycloak/providers
       # Import realms on first start (or when --import-realm is used)
       - ./realm-import:/opt/keycloak/data/import
+      # Entrypoint script for debug logging configuration
+      - ./docker/keycloak-entrypoint.sh:/opt/keycloak-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/opt/keycloak-entrypoint.sh"]
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
@@ -64,6 +67,12 @@ services:
       KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
       KC_HEALTH_ENABLED: "true"
       KC_METRICS_ENABLED: "true"
+      # Debug logging (enabled by default, set KEYCLOAK_DISABLE_DEBUG=true to disable)
+      # The entrypoint script will set KC_LOG_LEVEL=DEBUG by default
+      # If KEYCLOAK_DISABLE_DEBUG=true, it will set KC_LOG_LEVEL=INFO
+      # You can also directly set KC_LOG_LEVEL to override (DEBUG, INFO, WARN, ERROR)
+      KEYCLOAK_DISABLE_DEBUG: ${KEYCLOAK_DISABLE_DEBUG:-}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-}
       # Proxy configuration for reverse proxy/load balancer
       KC_PROXY: ${KC_PROXY:-edge}
       KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}

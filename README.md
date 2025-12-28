@@ -56,8 +56,25 @@ See `env.template` for defaults:
 - `POSTGRES_IMAGE`, `POSTGRES_VERSION`
 - `KC_DB_NAME`, `KC_DB_USERNAME`, `KC_DB_PASSWORD`
 - `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD`
- - `PHONE_PROVIDER_REPO_URL`, `PHONE_PROVIDER_BRANCH`
- - `THEME_REPO_URL`, `THEME_BRANCH`, `THEME_JAR_NAME`
- - `SPI_PHONE_*` (phone provider SPI config used on Keycloak startup)
+- `PHONE_PROVIDER_REPO_URL`, `PHONE_PROVIDER_BRANCH`
+- `THEME_REPO_URL`, `THEME_BRANCH`, `THEME_JAR_NAME`
+- `SPI_PHONE_*` (phone provider SPI config used on Keycloak startup)
+
+### Debug Logging
+
+**Debug logging is enabled by default** (`KC_LOG_LEVEL=DEBUG`).
+
+To disable debug logging, set `KEYCLOAK_DISABLE_DEBUG=true` in your `.env` file. This will set the log level to `INFO`.
+
+You can also directly set `KC_LOG_LEVEL` to any of: `DEBUG`, `INFO`, `WARN`, `ERROR`.
+
+Example in `.env`:
+```bash
+# Disable debug logging
+KEYCLOAK_DISABLE_DEBUG=true
+
+# Or set log level directly
+KC_LOG_LEVEL=INFO
+```
 
 
