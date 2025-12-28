@@ -17,7 +17,7 @@ M2_DIR="${M2_DIR:-/m2}"
 PHONE_PROVIDER_REPO_URL="${PHONE_PROVIDER_REPO_URL:-https://github.com/shivain22/keycloak-phone-provider.git}"
 PHONE_PROVIDER_BRANCH="${PHONE_PROVIDER_BRANCH:-master}"
 
-THEME_REPO_URL="${THEME_REPO_URL:-https://github.com/atpar-org/rms-auth-theme-plugin.git}"
+THEME_REPO_URL="${THEME_REPO_URL:-https://github.com/shivain22/rms-keycloakify-theme.git}"
 THEME_BRANCH="${THEME_BRANCH:-main}"
 THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}"
 
