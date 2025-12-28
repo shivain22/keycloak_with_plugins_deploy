@@ -42,7 +42,11 @@
       ],
       "realmRoles": [
         "ROLE_ADMIN"
-      ]
+      ],
+      "requiredActions": [],
+      "attributes": {
+        "skipPhoneVerification": ["true"]
+      }
     }
   ],
   "clients": [
