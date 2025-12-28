@@ -15,7 +15,7 @@ param(
     [string]$JobName,
     
     [Parameter(Mandatory=$false)]
-    [string]$GitRepoUrl = "",
+    [string]$GitRepoUrl = "https://github.com/shivain22/keycloak_with_plugins_deploy.git",
     
     [Parameter(Mandatory=$false)]
     [string]$GitBranch = "*/master",

@@ -5,6 +5,7 @@
 set -e
 
 # Default values
+GIT_REPO_URL="https://github.com/shivain22/keycloak_with_plugins_deploy.git"
 GIT_BRANCH="*/master"
 JENKINSFILE_PATH="Jenkinsfile"
 CONFIG_XML_PATH="jenkins-job-config.xml"

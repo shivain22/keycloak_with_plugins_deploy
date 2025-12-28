@@ -184,7 +184,7 @@ Examples:
     parser.add_argument("--username", required=True, help="Jenkins username")
     parser.add_argument("--password", required=True, help="Jenkins password or API token")
     parser.add_argument("--job-name", required=True, help="Name of the Jenkins job to create")
-    parser.add_argument("--git-repo-url", default="", help="Git repository URL")
+    parser.add_argument("--git-repo-url", default="https://github.com/shivain22/keycloak_with_plugins_deploy.git", help="Git repository URL")
     parser.add_argument("--git-branch", default="*/master", help="Git branch to build (default: */master)")
     parser.add_argument("--jenkinsfile-path", default="Jenkinsfile", help="Path to Jenkinsfile in repo (default: Jenkinsfile)")
     parser.add_argument("--credentials-id", default="", help="Jenkins credentials ID for Git authentication")

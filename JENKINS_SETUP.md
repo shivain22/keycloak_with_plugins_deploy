@@ -13,6 +13,33 @@ This guide will help you set up the Jenkins pipeline for automated deployment of
    - GitHub plugin (for webhook triggers)
    - Docker Pipeline (optional, but recommended)
 
+## Quick Setup (Programmatic)
+
+You can create the Jenkins pipeline programmatically using the provided scripts:
+
+### Using Python Script (Recommended)
+
+```bash
+python scripts/create-jenkins-pipeline.py \
+    --jenkins-url "http://your-jenkins-server:8080" \
+    --username "your-username" \
+    --password "your-api-token" \
+    --job-name "Keycloak-Deployment"
+```
+
+The script will automatically use the repository: `https://github.com/shivain22/keycloak_with_plugins_deploy.git`
+
+### Using Quick Setup Script (Linux/macOS)
+
+```bash
+chmod +x scripts/setup-jenkins-pipeline.sh
+./scripts/setup-jenkins-pipeline.sh
+```
+
+This interactive script will guide you through the setup process.
+
+For more details, see [scripts/README.md](scripts/README.md) and [GITHUB_WEBHOOK_SETUP.md](GITHUB_WEBHOOK_SETUP.md).
+
 ## Setup Options
 
 ### Option 1: Using Jenkinsfile (Recommended - Pipeline as Code)
@@ -33,10 +60,9 @@ This is the modern approach where the pipeline definition is stored in your repo
 3. **Configure the Pipeline**
    - **Pipeline Definition**: Select "Pipeline script from SCM"
    - **SCM**: Select "Git"
-   - **Repository URL**: Enter your GitHub repository URL
-     - Example: `https://github.com/your-username/keycloak_with_plugins_deploy.git`
+   - **Repository URL**: `https://github.com/shivain22/keycloak_with_plugins_deploy.git`
    - **Credentials**: Add your GitHub credentials if the repo is private
-   - **Branches to build**: `*/master`
+   - **Branches to build**: `*/main` or `*/master` (or both)
    - **Script Path**: `Jenkinsfile` (should be auto-detected)
 
 4. **Configure GitHub Webhook (for automatic triggers)**

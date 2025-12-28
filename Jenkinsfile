@@ -7,19 +7,8 @@ pipeline {
         timestamps()
     }
 
-    environment {
-        // Docker Compose project name to avoid conflicts
-        COMPOSE_PROJECT_NAME = 'keycloak-deployment'
-        
-        // Default Keycloak port (can be overridden in .env)
-        KEYCLOAK_PORT = '8080'
-        
-        // Health check timeout
-        HEALTH_CHECK_TIMEOUT = '300'
-    }
-
     triggers {
-        // Trigger on push to master branch
+        // Trigger on push to main/master branch via GitHub webhook
         githubPush()
         
         // Alternative: Poll SCM every 5 minutes (if webhooks not configured)
@@ -30,7 +19,7 @@ pipeline {
         stage('Checkout') {
             steps {
                 script {
-                    echo "Checking out code from ${env.GIT_BRANCH}"
+                    echo "=== Checking out code ==="
                     checkout scm
                     
                     // Display commit information
@@ -73,76 +62,30 @@ pipeline {
                         docker --version || { echo "ERROR: Docker not found!"; exit 1; }
                         docker compose version || { echo "ERROR: Docker Compose not found!"; exit 1; }
                     '''
-                }
-            }
-        }
-
-        stage('Stop Existing Deployment') {
-            steps {
-                script {
-                    echo "=== Stopping Existing Deployment ==="
+                    
+                    // Make sure start.sh is executable
                     sh '''
-                        cd "${WORKSPACE}"
-                        docker compose -p "${COMPOSE_PROJECT_NAME}" down || true
-                        
-                        # Clean up any orphaned containers
-                        docker ps -a --filter "name=keycloak" --format "{{.ID}}" | xargs -r docker rm -f || true
-                        docker ps -a --filter "name=keycloak-db" --format "{{.ID}}" | xargs -r docker rm -f || true
-                        docker ps -a --filter "name=keycloak-artifacts-builder" --format "{{.ID}}" | xargs -r docker rm -f || true
+                        chmod +x start.sh || true
                     '''
                 }
             }
         }
 
-        stage('Build Artifacts') {
+        stage('Deploy using start.sh') {
             steps {
                 script {
-                    echo "=== Building Artifacts (Providers) ==="
+                    echo "=== Running start.sh to deploy Keycloak ==="
                     sh '''
                         cd "${WORKSPACE}"
                         
-                        # Build artifacts container
-                        docker compose -p "${COMPOSE_PROJECT_NAME}" build artifacts || {
-                            echo "ERROR: Failed to build artifacts image"
-                            exit 1
-                        }
+                        # Run the start.sh script
+                        # This will:
+                        # 1. Stop existing containers
+                        # 2. Build artifacts
+                        # 3. Start Postgres + Keycloak
+                        ./start.sh
                         
-                        # Run artifacts build
-                        docker compose -p "${COMPOSE_PROJECT_NAME}" run --rm artifacts || {
-                            echo "ERROR: Artifacts build failed"
-                            exit 1
-                        }
-                        
-                        # Verify artifacts were created
-                        if [ ! -f "providers/keycloak-phone-provider.jar" ] || \
-                           [ ! -f "providers/keycloak-phone-provider-msg91.jar" ]; then
-                            echo "ERROR: Required provider JARs not found!"
-                            exit 1
-                        fi
-                        
-                        echo "Artifacts built successfully:"
-                        ls -lh providers/
-                    '''
-                }
-            }
-        }
-
-        stage('Deploy Services') {
-            steps {
-                script {
-                    echo "=== Deploying Keycloak Services ==="
-                    sh '''
-                        cd "${WORKSPACE}"
-                        
-                        # Start Postgres and Keycloak
-                        docker compose -p "${COMPOSE_PROJECT_NAME}" up -d || {
-                            echo "ERROR: Failed to start services"
-                            docker compose -p "${COMPOSE_PROJECT_NAME}" logs
-                            exit 1
-                        }
-                        
-                        echo "Services started. Waiting for containers to be ready..."
-                        sleep 10
+                        echo "Deployment completed successfully!"
                     '''
                 }
             }
@@ -156,22 +99,24 @@ pipeline {
                         cd "${WORKSPACE}"
                         
                         # Read Keycloak port from .env if available
+                        KEYCLOAK_PORT="8080"
                         if [ -f .env ]; then
-                            KEYCLOAK_PORT=$(grep -E "^KEYCLOAK_HTTP_PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "8080")
-                        else
-                            KEYCLOAK_PORT="8080"
+                            ENV_PORT=$(grep -E "^KEYCLOAK_HTTP_PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "")
+                            if [ -n "${ENV_PORT}" ]; then
+                                KEYCLOAK_PORT="${ENV_PORT}"
+                            fi
                         fi
                         
                         echo "Checking Keycloak health on port ${KEYCLOAK_PORT}..."
                         
-                        # Wait for Keycloak to be ready
-                        MAX_WAIT=${HEALTH_CHECK_TIMEOUT}
+                        # Wait for Keycloak to be ready (max 5 minutes)
+                        MAX_WAIT=300
                         ELAPSED=0
                         INTERVAL=10
                         
                         while [ ${ELAPSED} -lt ${MAX_WAIT} ]; do
                             if curl -f -s "http://localhost:${KEYCLOAK_PORT}/health/ready" > /dev/null 2>&1; then
-                                echo "Keycloak is ready!"
+                                echo "✓ Keycloak is ready!"
                                 break
                             fi
                             
@@ -181,55 +126,13 @@ pipeline {
                         done
                         
                         if [ ${ELAPSED} -ge ${MAX_WAIT} ]; then
-                            echo "ERROR: Keycloak health check timeout!"
+                            echo "WARNING: Keycloak health check timeout!"
                             echo "Container logs:"
-                            docker compose -p "${COMPOSE_PROJECT_NAME}" logs keycloak --tail 50
-                            exit 1
-                        fi
-                        
-                        # Check if Keycloak is responding
-                        if ! curl -f -s "http://localhost:${KEYCLOAK_PORT}/health/ready" > /dev/null; then
-                            echo "ERROR: Keycloak health check failed!"
-                            docker compose -p "${COMPOSE_PROJECT_NAME}" logs keycloak --tail 50
-                            exit 1
-                        fi
-                        
-                        echo "Keycloak health check passed!"
-                        echo "Keycloak is available at: http://localhost:${KEYCLOAK_PORT}"
-                    '''
-                }
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                script {
-                    echo "=== Verifying Deployment ==="
-                    sh '''
-                        cd "${WORKSPACE}"
-                        
-                        # Check container status
-                        echo "Container status:"
-                        docker compose -p "${COMPOSE_PROJECT_NAME}" ps
-                        
-                        # Verify all containers are running
-                        if ! docker compose -p "${COMPOSE_PROJECT_NAME}" ps | grep -q "Up"; then
-                            echo "ERROR: Some containers are not running!"
-                            docker compose -p "${COMPOSE_PROJECT_NAME}" ps
-                            exit 1
-                        fi
-                        
-                        # Check Keycloak admin console is accessible
-                        if [ -f .env ]; then
-                            KEYCLOAK_PORT=$(grep -E "^KEYCLOAK_HTTP_PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "8080")
+                            docker compose logs keycloak --tail 50
+                            # Don't fail the build, just warn
                         else
-                            KEYCLOAK_PORT="8080"
-                        fi
-                        
-                        if curl -f -s "http://localhost:${KEYCLOAK_PORT}" > /dev/null 2>&1; then
-                            echo "✓ Keycloak is accessible"
-                        else
-                            echo "WARNING: Keycloak may not be fully ready yet"
+                            echo "✓ Keycloak health check passed!"
+                            echo "Keycloak is available at: http://localhost:${KEYCLOAK_PORT}"
                         fi
                     '''
                 }

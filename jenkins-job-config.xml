@@ -1,7 +1,7 @@
 <?xml version='1.1' encoding='UTF-8'?>
 <project>
   <actions/>
-  <description>Automated deployment pipeline for Keycloak with custom providers. Triggers on merge to master branch.</description>
+  <description>Automated deployment pipeline for Keycloak with custom providers. Triggers on push/merge to main/master branch. Runs start.sh to deploy.</description>
   <keepDependencies>false</keepDependencies>
   <properties>
     <org.jenkinsci.plugins.workflow.job.properties.PipelineTriggersJobProperty>
@@ -17,11 +17,14 @@
       <configVersion>2</configVersion>
       <userRemoteConfigs>
         <hudson.plugins.git.UserRemoteConfig>
-          <url>REPLACE_WITH_YOUR_GITHUB_REPO_URL</url>
+          <url>https://github.com/shivain22/keycloak_with_plugins_deploy.git</url>
           <credentialsId>REPLACE_WITH_YOUR_GITHUB_CREDENTIALS_ID</credentialsId>
         </hudson.plugins.git.UserRemoteConfig>
       </userRemoteConfigs>
       <branches>
+        <hudson.plugins.git.BranchSpec>
+          <name>*/main</name>
+        </hudson.plugins.git.BranchSpec>
         <hudson.plugins.git.BranchSpec>
           <name>*/master</name>
         </hudson.plugins.git.BranchSpec>
