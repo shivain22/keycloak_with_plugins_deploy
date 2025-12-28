@@ -163,6 +163,38 @@
       "redirectUris": [
         "http://localhost:9000/login/oauth2/code/oidc"
       ]
+    },
+    {
+      "clientId": "rms-service",
+      "name": "RMS Service Client",
+      "description": "Service account client for RMS service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "R7sT2vW5xZ8aB1cD4eF7gH0jK3mN6pQ",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "web-origins",
+        "role_list",
+        "roles",
+        "gateway-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ]
     }
   ],
   "clientScopes": [
