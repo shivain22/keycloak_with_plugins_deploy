@@ -4,7 +4,7 @@ set -euo pipefail
 # One-shot build container that:
 # - cleans /work/providers
 # - clones and builds keycloak-phone-provider (maven)
-# - clones and builds rms-auth-theme-plugin (npm + keycloakify which shells out to mvn)
+# - clones and builds rms-keycloakify-theme (npm/yarn/pnpm + keycloakify which shells out to mvn)
 # - copies required jars into /work/providers
 #
 # Expected volume mounts:
@@ -100,14 +100,23 @@ fi
 cp -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" "${PROVIDERS_DIR}/"
 cp -f "${pp_dir}/target/providers/keycloak-phone-provider-msg91.jar" "${PROVIDERS_DIR}/"
 
-echo "=== Building rms-auth-theme-plugin (Keycloakify theme) ==="
-theme_dir="${tmp}/rms-auth-theme-plugin"
+echo "=== Building rms-keycloakify-theme (Keycloakify theme) ==="
+theme_dir="${tmp}/rms-keycloakify-theme"
 git_clone "${THEME_REPO_URL}" "${THEME_BRANCH}" "${theme_dir}"
 pushd "${theme_dir}" >/dev/null
 
-if [[ -f package-lock.json ]]; then
+# Detect and use appropriate package manager
+if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
+  echo "Using pnpm..."
+  pnpm install --no-frozen-lockfile || npm install --no-fund --no-audit
+elif [[ -f yarn.lock ]] && command -v yarn >/dev/null 2>&1; then
+  echo "Using yarn..."
+  yarn install --frozen-lockfile || npm install --no-fund --no-audit
+elif [[ -f package-lock.json ]]; then
+  echo "Using npm (package-lock.json found)..."
   npm ci --no-fund --no-audit
 else
+  echo "Using npm (default)..."
   npm install --no-fund --no-audit
 fi
 
