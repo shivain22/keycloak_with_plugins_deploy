@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure script is run with bash (not sh)
+if [ -z "${BASH_VERSION:-}" ]; then
+  echo "ERROR: This script requires bash. Please run: bash $0" >&2
+  exit 1
+fi
+
 # Fresh start script - deletes all volumes and starts from scratch
 # - Stops any existing containers
 # - Removes all volumes (postgres_data, m2_cache)
@@ -14,7 +20,12 @@ set -euo pipefail
 #   ./fresh-start.sh --logs      # tail keycloak logs after start
 #   ./fresh-start.sh --rebuild   # force rebuild of the artifacts image
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get script directory (compatible with both bash and sh)
+if [ -n "${BASH_SOURCE:-}" ]; then
+  REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+fi
 cd "${REPO_ROOT}"
 
 REBUILD=0
@@ -52,7 +63,7 @@ docker compose down -v 2>/dev/null || true
 
 echo "==> Generating realm configurations ..."
 ENV_VAR="${ENVIRONMENT:-local}"
-./scripts/generate-realm-configs.sh "${ENV_VAR}"
+bash scripts/generate-realm-configs.sh "${ENV_VAR}"
 if [ $? -ne 0 ]; then
   echo "ERROR: Realm config generation failed!" >&2
   exit 1

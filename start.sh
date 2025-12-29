@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure script is run with bash (not sh)
+if [ -z "${BASH_VERSION:-}" ]; then
+  echo "ERROR: This script requires bash. Please run: bash $0" >&2
+  exit 1
+fi
+
 # One-command bootstrap for this repo.
 # - Stops any existing containers
 # - Builds & runs the "artifacts" one-shot container (produces ./providers/*.jar)
@@ -13,7 +19,12 @@ set -euo pipefail
 #   ./start.sh --logs      # tail keycloak logs after start
 #   ./start.sh --rebuild   # force rebuild of the artifacts image
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Get script directory (compatible with both bash and sh)
+if [ -n "${BASH_SOURCE:-}" ]; then
+  REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+else
+  REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
+fi
 cd "${REPO_ROOT}"
 
 REBUILD=0
@@ -41,7 +52,7 @@ docker compose down 2>/dev/null || true
 
 echo "==> Generating realm configurations ..."
 ENV_VAR="${ENVIRONMENT:-local}"
-./scripts/generate-realm-configs.sh "${ENV_VAR}"
+bash scripts/generate-realm-configs.sh "${ENV_VAR}"
 if [ $? -ne 0 ]; then
   echo "ERROR: Realm config generation failed!" >&2
   exit 1

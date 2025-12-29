@@ -1,11 +1,23 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Ensure script is run with bash (not sh)
+if [ -z "${BASH_VERSION:-}" ]; then
+  echo "ERROR: This script requires bash. Please run: bash $0" >&2
+  exit 1
+fi
+
 # Generate realm JSON files from templates with environment variable substitution
 # Usage: ./scripts/generate-realm-configs.sh [local|dev|staging|prod]
 
 ENV="${1:-local}"
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Get script directory (compatible with both bash and sh)
+if [ -n "${BASH_SOURCE:-}" ]; then
+  REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+else
+  REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+fi
 cd "${REPO_ROOT}"
 
 # Load environment variables from .env file if it exists

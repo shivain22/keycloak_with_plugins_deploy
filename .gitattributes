@@ -1,0 +1,9 @@
+# Ensure shell scripts are executable
+*.sh text eol=lf
+start.sh text eol=lf
+fresh-start.sh text eol=lf
+scripts/*.sh text eol=lf
+
+# Auto-detect text files and perform LF normalization
+* text=auto
+
