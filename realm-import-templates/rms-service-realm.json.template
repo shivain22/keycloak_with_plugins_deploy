@@ -94,13 +94,13 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:8083",
-      "rootUrl": "http://localhost:8083",
-      "adminUrl": "http://localhost:8083",
+      "baseUrl": "${SERVICE_URL}",
+      "rootUrl": "${SERVICE_URL}",
+      "adminUrl": "${SERVICE_URL}",
       "attributes": {
         "pkce.code.challenge.method": "",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000"
+        "post.logout.redirect.uris": "${FRONTEND_URL},${DASHBOARD_URL_PROD}"
       },
       "defaultClientScopes": [
         "openid",
@@ -118,11 +118,14 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:8083",
-        "http://localhost:9000"
+        "${SERVICE_URL}",
+        "${FRONTEND_URL}",
+        "${SERVICE_URL_PROD}",
+        "${DASHBOARD_URL_PROD}"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc"
+        "${FRONTEND_URL}/login/oauth2/code/oidc",
+        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
       ]
     },
     {
@@ -137,13 +140,13 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:8083",
-      "rootUrl": "http://localhost:8083",
-      "adminUrl": "http://localhost:8083",
+      "baseUrl": "${SERVICE_URL}",
+      "rootUrl": "${SERVICE_URL}",
+      "adminUrl": "${SERVICE_URL}",
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000"
+        "post.logout.redirect.uris": "${FRONTEND_URL},${DASHBOARD_URL_PROD}"
       },
       "defaultClientScopes": [
         "openid",
@@ -161,11 +164,14 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:8083",
-        "http://localhost:9000"
+        "${SERVICE_URL}",
+        "${FRONTEND_URL}",
+        "${SERVICE_URL_PROD}",
+        "${DASHBOARD_URL_PROD}"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc"
+        "${FRONTEND_URL}/login/oauth2/code/oidc",
+        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
       ]
     }
   ],
@@ -347,6 +353,4 @@
     "microprofile-jwt"
   ]
 }
-
-
 

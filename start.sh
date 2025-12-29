@@ -32,6 +32,14 @@ command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&
 echo "==> Stopping existing containers (if any) ..."
 docker compose down 2>/dev/null || true
 
+echo "==> Generating realm configurations ..."
+ENV_VAR="${ENVIRONMENT:-local}"
+./scripts/generate-realm-configs.sh "${ENV_VAR}"
+if [ $? -ne 0 ]; then
+  echo "ERROR: Realm config generation failed!" >&2
+  exit 1
+fi
+
 echo "==> Building artifacts (providers) ..."
 # Build the image first if --rebuild was requested
 if [ "${REBUILD}" = "1" ]; then
@@ -45,7 +53,20 @@ if ! docker compose run --rm artifacts; then
   exit 1
 fi
 
-echo "==> Starting Postgres + Keycloak ..."
+echo "==> Building and pushing Gateway and Service Docker images ..."
+# Build the apps-builder image first if --rebuild was requested
+if [ "${REBUILD}" = "1" ]; then
+  echo "  (rebuilding apps-builder image...)"
+  docker compose build apps-builder
+fi
+
+# Build and push gateway and service images
+if ! docker compose run --rm apps-builder; then
+  echo "ERROR: Apps build failed!" >&2
+  exit 1
+fi
+
+echo "==> Starting Postgres + Keycloak + Gateway + Service ..."
 COMPOSE_BUILD_FLAG=""
 if [ "${REBUILD}" = "1" ]; then
   COMPOSE_BUILD_FLAG="--build"
@@ -54,7 +75,7 @@ docker compose up ${COMPOSE_BUILD_FLAG} -d
 
 echo "==> Done."
 # Read KEYCLOAK_HTTP_PORT from .env file (docker compose reads it automatically)
-KEYCLOAK_PORT="8080"
+KEYCLOAK_PORT="9292"
 if [ -f .env ]; then
   ENV_PORT=$(grep -E "^KEYCLOAK_HTTP_PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "")
   if [ -n "${ENV_PORT}" ]; then

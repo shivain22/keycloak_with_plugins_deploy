@@ -19,6 +19,26 @@ services:
       - m2_cache:/m2
     restart: "no"
 
+  apps-builder:
+    build:
+      context: ./docker/builder
+      dockerfile: Dockerfile.apps
+    container_name: apps-builder
+    environment:
+      # Override any of these in .env if needed
+      GATEWAY_REPO_URL: ${GATEWAY_REPO_URL:-https://github.com/shivain22/rms.git}
+      GATEWAY_BRANCH: ${GATEWAY_BRANCH:-master}
+      SERVICE_REPO_URL: ${SERVICE_REPO_URL:-https://github.com/shivain22/rms-service.git}
+      SERVICE_BRANCH: ${SERVICE_BRANCH:-master}
+      DOCKER_USERNAME: ${DOCKER_USERNAME:-shivain22}
+      DOCKER_PASSWORD: ${DOCKER_PASSWORD:-Asd!@#123}
+      # Optional (needed if a repo is private): GitHub token with repo read access
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # Maven cache to avoid flaky re-downloads
+      - m2_cache:/m2
+    restart: "no"
+
   db:
     image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
     container_name: keycloak-db
@@ -30,9 +50,30 @@ services:
       POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
       POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${POSTGRES_PORT:-5434}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  rms-postgresql:
+    image: ${RMS_POSTGRES_IMAGE:-postgres}:${RMS_POSTGRES_VERSION:-15.4}
+    container_name: rms-postgresql
+    depends_on:
+      artifacts:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: ${RMS_DB_NAME:-rms}
+      POSTGRES_USER: ${RMS_DB_USERNAME:-rms}
+      POSTGRES_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+    ports:
+      - "${RMS_POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - rms_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -83,7 +124,7 @@ services:
       MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
       MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
     ports:
-      - "${KEYCLOAK_HTTP_PORT:-8080}:8080"
+      - "${KEYCLOAK_HTTP_PORT:-9292}:8080"
     command:
       - start-dev
       - --http-port=8080
@@ -109,8 +150,55 @@ services:
       - --spi-message-sender-service.msg91.templateId=${MSG91_TEMPLATE_ID:-CHANGE_ME}
     restart: unless-stopped
 
+  gateway:
+    image: ${GATEWAY_IMAGE:-shivain22/rms-gateway}:${GATEWAY_VERSION:-latest}
+    container_name: rms-gateway
+    depends_on:
+      apps-builder:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+      rms-postgresql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
+      SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:${KEYCLOAK_HTTP_PORT:-9292}/realms/${GATEWAY_REALM:-gateway}}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${GATEWAY_CLIENT_ID:-gateway-web}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${GATEWAY_CLIENT_SECRET:-M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h}
+      SERVER_PORT: 8080
+    ports:
+      - "${GATEWAY_HTTP_PORT:-9293}:8080"
+    restart: unless-stopped
+
+  service:
+    image: ${SERVICE_IMAGE:-shivain22/rms-service}:${SERVICE_VERSION:-latest}
+    container_name: rms-service
+    depends_on:
+      apps-builder:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+      rms-postgresql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
+      SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://localhost:${KEYCLOAK_HTTP_PORT:-9292}/realms/${SERVICE_REALM:-rms-service}}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${SERVICE_CLIENT_ID:-rms-service-web}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${SERVICE_CLIENT_SECRET:-B1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV}
+      SERVER_PORT: 8080
+    ports:
+      - "${SERVICE_HTTP_PORT:-9294}:8080"
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  rms_postgres_data:
   m2_cache:
 
 

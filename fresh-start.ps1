@@ -50,6 +50,14 @@ foreach ($vol in $volumes) {
     }
 }
 
+Write-Host "==> Generating realm configurations ..." -ForegroundColor Cyan
+$ENV_VAR = if ($env:ENVIRONMENT) { $env:ENVIRONMENT } else { "local" }
+& .\scripts\generate-realm-configs.ps1 -Env $ENV_VAR
+if ($LASTEXITCODE -ne 0 -or -not $?) {
+    Write-Host "ERROR: Realm config generation failed!" -ForegroundColor Red
+    exit 1
+}
+
 Write-Host "==> Building artifacts (providers) ..." -ForegroundColor Cyan
 # Build the image first if --rebuild was requested
 if ($rebuild) {
@@ -68,7 +76,25 @@ if ($LASTEXITCODE -ne 0 -or -not $?) {
     exit 1
 }
 
-Write-Host "==> Starting Postgres + Keycloak ..." -ForegroundColor Cyan
+Write-Host "==> Building and pushing Gateway and Service Docker images ..." -ForegroundColor Cyan
+# Build the apps-builder image first if --rebuild was requested
+if ($rebuild) {
+    Write-Host "  (rebuilding apps-builder image...)" -ForegroundColor Yellow
+    & docker compose build apps-builder
+    if ($LASTEXITCODE -ne 0 -or -not $?) {
+        Write-Host "ERROR: Apps-builder image build failed!" -ForegroundColor Red
+        exit 1
+    }
+}
+
+# Build and push gateway and service images
+& docker compose run --rm apps-builder
+if ($LASTEXITCODE -ne 0 -or -not $?) {
+    Write-Host "ERROR: Apps build failed!" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host "==> Starting Postgres + Keycloak + Gateway + Service ..." -ForegroundColor Cyan
 if ($rebuild) {
     & docker compose up --build -d
 } else {
@@ -82,7 +108,7 @@ if ($LASTEXITCODE -ne 0 -or -not $?) {
 Write-Host "==> Done." -ForegroundColor Green
 
 # Read KEYCLOAK_HTTP_PORT from .env file
-$KEYCLOAK_PORT = "8080"
+$KEYCLOAK_PORT = "9292"
 if (Test-Path ".env") {
     $envContent = Get-Content ".env" | Where-Object { $_ -match "^KEYCLOAK_HTTP_PORT=" }
     if ($envContent) {

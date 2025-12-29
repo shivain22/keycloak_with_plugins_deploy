@@ -1,7 +1,7 @@
 {
-  "realm": "rms-service",
+  "realm": "gateway",
   "enabled": true,
-  "displayName": "RMS Service Realm",
+  "displayName": "Gateway Realm",
   "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -16,7 +16,7 @@
     "realm": [
       {
         "name": "ROLE_ADMIN",
-        "description": "Administrator role for RMS service operations",
+        "description": "Administrator role for gateway operations",
         "composite": false
       },
       {
@@ -27,16 +27,16 @@
   },
   "users": [
     {
-      "username": "rmsadmin",
+      "username": "gwadmin",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "RMS",
+      "firstName": "Gateway",
       "lastName": "Administrator",
-      "email": "rmsadmin@rms-service.local",
+      "email": "gwadmin@gateway.local",
       "credentials": [
         {
           "type": "password",
-          "value": "rmsadmin",
+          "value": "gwadmin",
           "temporary": false
         }
       ],
@@ -51,12 +51,12 @@
   ],
   "clients": [
     {
-      "clientId": "rms-service-admin-client",
-      "name": "RMS Service Admin Client",
-      "description": "Service account client for RMS service to manage realms via Admin API",
+      "clientId": "gateway-admin-client",
+      "name": "Gateway Admin Client",
+      "description": "Service account client for gateway to manage realms via Admin API",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "A9bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU",
+      "secret": "K8mN2pQ7rT5vW9xZ1aB3cD4eF6gH8j",
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "implicitFlowEnabled": false,
@@ -73,7 +73,7 @@
         "web-origins",
         "role_list",
         "roles",
-        "rms-roles"
+        "gateway-roles"
       ],
       "optionalClientScopes": [
         "address",
@@ -83,24 +83,24 @@
       ]
     },
     {
-      "clientId": "rms-service-web",
-      "name": "RMS Service Web Client",
-      "description": "Web client for RMS service application",
+      "clientId": "gateway-web",
+      "name": "Gateway Web Client",
+      "description": "Web client for gateway application",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "B1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV",
+      "secret": "M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:8083",
-      "rootUrl": "http://localhost:8083",
-      "adminUrl": "http://localhost:8083",
+      "baseUrl": "${GATEWAY_URL}",
+      "rootUrl": "${GATEWAY_URL}",
+      "adminUrl": "${GATEWAY_URL}",
       "attributes": {
         "pkce.code.challenge.method": "",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000"
+        "post.logout.redirect.uris": "${FRONTEND_URL},${DASHBOARD_URL_PROD}"
       },
       "defaultClientScopes": [
         "openid",
@@ -109,7 +109,7 @@
         "web-origins",
         "role_list",
         "roles",
-        "rms-roles"
+        "gateway-roles"
       ],
       "optionalClientScopes": [
         "address",
@@ -118,32 +118,35 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:8083",
-        "http://localhost:9000"
+        "${GATEWAY_URL}",
+        "${FRONTEND_URL}",
+        "${GATEWAY_URL_PROD}",
+        "${DASHBOARD_URL_PROD}"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc"
+        "${FRONTEND_URL}/login/oauth2/code/oidc",
+        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
       ]
     },
     {
-      "clientId": "rms-service-mobile",
-      "name": "RMS Service Mobile Client",
-      "description": "Mobile client for RMS service application with PKCE",
+      "clientId": "gateway-mobile",
+      "name": "Gateway Mobile Client",
+      "description": "Mobile client for gateway application with PKCE",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "C2dE4fG6hI8jK0lM2nO4pQ6rS8tU0vW",
+      "secret": "L9mN3pQ6rT8vW2xZ4aB5cD7eF9gH1j",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:8083",
-      "rootUrl": "http://localhost:8083",
-      "adminUrl": "http://localhost:8083",
+      "baseUrl": "${GATEWAY_URL}",
+      "rootUrl": "${GATEWAY_URL}",
+      "adminUrl": "${GATEWAY_URL}",
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000"
+        "post.logout.redirect.uris": "${FRONTEND_URL},${DASHBOARD_URL_PROD}"
       },
       "defaultClientScopes": [
         "openid",
@@ -152,7 +155,7 @@
         "web-origins",
         "role_list",
         "roles",
-        "rms-roles"
+        "gateway-roles"
       ],
       "optionalClientScopes": [
         "address",
@@ -161,11 +164,46 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:8083",
-        "http://localhost:9000"
+        "${GATEWAY_URL}",
+        "${FRONTEND_URL}",
+        "${GATEWAY_URL_PROD}",
+        "${DASHBOARD_URL_PROD}"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc"
+        "${FRONTEND_URL}/login/oauth2/code/oidc",
+        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
+      ]
+    },
+    {
+      "clientId": "rms-service",
+      "name": "RMS Service Client",
+      "description": "Service account client for RMS service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "R7sT2vW5xZ8aB1cD4eF7gH0jK3mN6pQ",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "web-origins",
+        "role_list",
+        "roles",
+        "gateway-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
       ]
     }
   ],
@@ -304,8 +342,8 @@
       ]
     },
     {
-      "name": "rms-roles",
-      "description": "Custom scope to add roles as flat array in token claims for RMS service",
+      "name": "gateway-roles",
+      "description": "Custom scope to add roles as flat array in token claims for gateway",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",
@@ -338,7 +376,7 @@
     "roles",
     "web-origins",
     "acr",
-    "rms-roles"
+    "gateway-roles"
   ],
   "defaultOptionalClientScopes": [
     "offline_access",
@@ -347,6 +385,4 @@
     "microprofile-jwt"
   ]
 }
-
-
 
