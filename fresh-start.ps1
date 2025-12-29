@@ -30,6 +30,13 @@ try {
     exit 1
 }
 
+# Setup .env file if it doesn't exist
+if (-not (Test-Path ".env")) {
+    Write-Host "==> Creating .env file from env.example ..." -ForegroundColor Cyan
+    Copy-Item env.example .env
+    Write-Host "✅ Created .env file. Review and update if needed." -ForegroundColor Green
+}
+
 Write-Host "==> Stopping existing containers (if any) ..." -ForegroundColor Cyan
 & docker compose down 2>&1 | Out-Null
 # Ignore errors if no containers are running

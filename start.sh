@@ -29,6 +29,13 @@ done
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&2; exit 1; }
 
+# Setup .env file if it doesn't exist
+if [ ! -f ".env" ]; then
+  echo "==> Creating .env file from env.example ..."
+  cp env.example .env
+  echo "✅ Created .env file. Review and update if needed."
+fi
+
 echo "==> Stopping existing containers (if any) ..."
 docker compose down 2>/dev/null || true
 
