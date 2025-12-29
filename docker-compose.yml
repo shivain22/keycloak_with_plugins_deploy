@@ -169,6 +169,13 @@ services:
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${GATEWAY_CLIENT_ID:-gateway-web}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${GATEWAY_CLIENT_SECRET:-M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h}
       SERVER_PORT: 8080
+      # Keycloak Admin Client Configuration (required for realm management)
+      # Spring Boot relaxed binding: KEYCLOAK_ADMIN_SERVER_URL maps to keycloak.admin.server-url
+      KEYCLOAK_ADMIN_SERVER_URL: ${KEYCLOAK_ADMIN_SERVER_URL:-http://keycloak:8080}
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_ADMIN_REALM:-master}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-${KEYCLOAK_ADMIN:-admin}}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
     ports:
       - "${GATEWAY_HTTP_PORT:-9293}:8080"
     restart: unless-stopped
