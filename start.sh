@@ -9,6 +9,7 @@ set -euo pipefail
 #   ./start.sh --runtime    # Use runtime compose (no builders)
 #   ./start.sh --logs       # Tail logs after start
 #   ./start.sh --clean      # Remove volumes (useful when postgres version changes)
+#   ./start.sh --setup-env  # Run setup-env.sh to create/update .env file
 
 # Ensure script is run with bash
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -30,6 +31,7 @@ SKIP_BUILD=0
 TAIL_LOGS=0
 USE_RUNTIME=0
 CLEAN_VOLUMES=0
+SETUP_ENV=0
 
 for arg in "$@"; do
   case "${arg}" in
@@ -38,17 +40,32 @@ for arg in "$@"; do
     --logs) TAIL_LOGS=1 ;;
     --runtime) USE_RUNTIME=1 ;;
     --clean) CLEAN_VOLUMES=1 ;;
+    --setup-env) SETUP_ENV=1 ;;
     *) echo "Unknown arg: ${arg}" >&2; exit 2 ;;
   esac
 done
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&2; exit 1; }
 
-# Setup .env file if it doesn't exist
-if [ ! -f ".env" ]; then
-  echo "==> Creating .env file from env.example ..."
+# Setup .env file - always overwrite/create from env.example
+if [ "${SETUP_ENV}" = "1" ]; then
+  # Interactive mode: use setup-env.sh which prompts for confirmation
+  echo "==> Running setup-env.sh (interactive mode) ..."
+  if [ -f "setup-env.sh" ]; then
+    bash setup-env.sh
+  else
+    echo "ERROR: setup-env.sh not found!" >&2
+    exit 1
+  fi
+else
+  # Default: always overwrite/create .env from env.example
+  if [ -f ".env" ]; then
+    echo "==> Overwriting existing .env file from env.example ..."
+  else
+    echo "==> Creating .env file from env.example ..."
+  fi
   cp env.example .env
-  echo "✅ Created .env file. Review and update if needed."
+  echo "✅ .env file created/updated from env.example"
 fi
 
 # Determine which compose file to use
