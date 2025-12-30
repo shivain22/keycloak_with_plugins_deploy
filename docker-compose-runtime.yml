@@ -261,6 +261,7 @@ services:
       DB_HOST: ${DB_HOST:-rms-postgresql}
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-rms}
+      DB_SCHEMA: ${DB_SCHEMA:-rms_gateway}
       DB_USERNAME: ${DB_USERNAME:-rms_gateway}
       DB_PASSWORD: ${DB_PASSWORD:-rms_gateway}
       SPRING_LIQUIBASE_URL: ${GATEWAY_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms?currentSchema=rms_gateway}}
