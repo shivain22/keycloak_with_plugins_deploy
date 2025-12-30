@@ -40,7 +40,7 @@ services:
     restart: "no"
 
   db:
-    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
     container_name: keycloak-db
     depends_on:
       artifacts:
@@ -61,7 +61,7 @@ services:
     restart: unless-stopped
 
   rms-postgresql:
-    image: ${RMS_POSTGRES_IMAGE:-postgres}:${RMS_POSTGRES_VERSION:-16}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
     container_name: rms-postgresql
     depends_on:
       artifacts:

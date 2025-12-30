@@ -6,7 +6,9 @@ set -euo pipefail
 #   ./start.sh              # Auto-detect if build is needed
 #   ./start.sh --build      # Force build
 #   ./start.sh --no-build   # Skip build, just start services
+#   ./start.sh --runtime    # Use runtime compose (no builders)
 #   ./start.sh --logs       # Tail logs after start
+#   ./start.sh --clean      # Remove volumes (useful when postgres version changes)
 
 # Ensure script is run with bash
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -27,6 +29,7 @@ FORCE_BUILD=0
 SKIP_BUILD=0
 TAIL_LOGS=0
 USE_RUNTIME=0
+CLEAN_VOLUMES=0
 
 for arg in "$@"; do
   case "${arg}" in
@@ -34,6 +37,7 @@ for arg in "$@"; do
     --no-build) SKIP_BUILD=1 ;;
     --logs) TAIL_LOGS=1 ;;
     --runtime) USE_RUNTIME=1 ;;
+    --clean) CLEAN_VOLUMES=1 ;;
     *) echo "Unknown arg: ${arg}" >&2; exit 2 ;;
   esac
 done
@@ -112,7 +116,13 @@ else
 fi
 
 echo "==> Stopping existing containers (if any) ..."
-docker compose -f "${COMPOSE_FILE}" down 2>/dev/null || true
+if [ "${CLEAN_VOLUMES}" = "1" ]; then
+  echo "==> Removing volumes (this will delete all database data) ..."
+  docker compose -f "${COMPOSE_FILE}" down -v 2>/dev/null || true
+  echo "✅ Volumes removed. Database will be recreated on next start."
+else
+  docker compose -f "${COMPOSE_FILE}" down 2>/dev/null || true
+fi
 
 if [ "${USE_RUNTIME}" = "0" ]; then
   # Full setup: artifacts + apps builder
