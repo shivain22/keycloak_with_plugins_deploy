@@ -317,6 +317,8 @@ services:
       SPRING_LIQUIBASE_URL: ${SERVICE_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service?currentSchema=public}}
       SPRING_LIQUIBASE_USER: ${SERVICE_LIQUIBASE_USER:-${SPRING_LIQUIBASE_USER:-rms_service}}
       SPRING_LIQUIBASE_PASSWORD: ${SERVICE_LIQUIBASE_PASSWORD:-${SPRING_LIQUIBASE_PASSWORD:-rms_service}}
+      # Service uses separate database 'rms_service' with default 'public' schema
+      SPRING_LIQUIBASE_DEFAULT_SCHEMA: ${SERVICE_LIQUIBASE_DEFAULT_SCHEMA:-${SPRING_LIQUIBASE_DEFAULT_SCHEMA:-public}}
       # Liquibase checksum validation (set to true to clear checksums if changeset was modified)
       SPRING_LIQUIBASE_CLEAR_CHECK_SUMS: ${SPRING_LIQUIBASE_CLEAR_CHECK_SUMS:-false}
       # Infrastructure Services (from env.example - all use service names)
