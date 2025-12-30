@@ -1,44 +1,5 @@
 services:
-  artifacts:
-    build:
-      context: ./docker/builder
-    container_name: keycloak-artifacts-builder
-    environment:
-      # Override any of these in .env if needed
-      PHONE_PROVIDER_REPO_URL: ${PHONE_PROVIDER_REPO_URL:-https://github.com/shivain22/keycloak-phone-provider.git}
-      PHONE_PROVIDER_BRANCH: ${PHONE_PROVIDER_BRANCH:-master}
-      THEME_REPO_URL: ${THEME_REPO_URL:-https://github.com/shivain22/rms-keycloakify-theme.git}
-      THEME_BRANCH: ${THEME_BRANCH:-main}
-      THEME_JAR_NAME: ${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}
-      # Optional (needed if a repo is private): GitHub token with repo read access
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-    volumes:
-      # Shared output for Keycloak provider/theme jars
-      - ./providers:/work/providers
-      # Maven cache to avoid flaky re-downloads
-      - m2_cache:/m2
-    restart: "no"
-
-  apps-builder:
-    build:
-      context: ./docker/builder
-      dockerfile: Dockerfile.apps
-    container_name: apps-builder
-    environment:
-      # Override any of these in .env if needed
-      GATEWAY_REPO_URL: ${GATEWAY_REPO_URL:-https://github.com/shivain22/rms.git}
-      GATEWAY_BRANCH: ${GATEWAY_BRANCH:-master}
-      SERVICE_REPO_URL: ${SERVICE_REPO_URL:-https://github.com/shivain22/rms-service.git}
-      SERVICE_BRANCH: ${SERVICE_BRANCH:-master}
-      DOCKER_USERNAME: ${DOCKER_USERNAME:-shivain22}
-      DOCKER_PASSWORD: ${DOCKER_PASSWORD:-Asd!@#123}
-      # Optional (needed if a repo is private): GitHub token with repo read access
-      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
-    volumes:
-      # Maven cache to avoid flaky re-downloads
-      - m2_cache:/m2
-    restart: "no"
-
+  
   db:
     image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
     container_name: keycloak-db

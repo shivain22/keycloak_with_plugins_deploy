@@ -111,7 +111,7 @@ if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
   pnpm install --no-frozen-lockfile || npm install --no-fund --no-audit
 elif [[ -f yarn.lock ]] && command -v yarn >/dev/null 2>&1; then
   echo "Using yarn..."
-  yarn install --frozen-lockfile || npm install --no-fund --no-audit
+  yarn install --no-frozen-lockfile || npm install --no-fund --no-audit
 elif [[ -f package-lock.json ]]; then
   echo "Using npm (package-lock.json found)..."
   npm ci --no-fund --no-audit
