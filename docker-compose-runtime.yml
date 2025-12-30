@@ -201,11 +201,11 @@ services:
       - --spi-message-sender-service.msg91.authKey=${MSG91_AUTH_KEY:-CHANGE_ME}
       - --spi-message-sender-service.msg91.templateId=${MSG91_TEMPLATE_ID:-CHANGE_ME}
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 20
-      start_period: 90s
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
     restart: unless-stopped
 
   # ===================================================================
