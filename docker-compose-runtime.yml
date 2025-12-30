@@ -199,6 +199,36 @@ services:
     restart: unless-stopped
 
   # ===================================================================
+  # Wait Services (for delayed startup)
+  # ===================================================================
+
+  wait-for-infrastructure:
+    image: busybox:latest
+    container_name: wait-for-infrastructure
+    command: sh -c "echo 'Waiting 60 seconds for infrastructure services to be ready...' && sleep 60 && echo 'Infrastructure wait complete'"
+    depends_on:
+      keycloak:
+        condition: service_started
+      rms-postgresql:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+      consul:
+        condition: service_started
+      kafka:
+        condition: service_started
+    restart: "no"
+
+  wait-for-gateway:
+    image: busybox:latest
+    container_name: wait-for-gateway
+    command: sh -c "echo 'Waiting 180 seconds (3 minutes) for gateway to be ready...' && sleep 180 && echo 'Gateway wait complete'"
+    depends_on:
+      gateway:
+        condition: service_started
+    restart: "no"
+
+  # ===================================================================
   # Application Services (Start After Infrastructure)
   # ===================================================================
 
@@ -206,20 +236,8 @@ services:
     image: ${GATEWAY_IMAGE:-shivain22/rms-gateway}:${GATEWAY_VERSION:-latest}
     container_name: rms-gateway
     depends_on:
-      # Core dependencies (must be healthy)
-      keycloak:
-        condition: service_healthy
-      rms-postgresql:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
-      # Optional dependencies (started is enough, app will retry if needed)
-      kafka:
-        condition: service_started
-      consul-config-loader:
-        condition: service_started
+      wait-for-infrastructure:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
       # Database Configuration
@@ -258,23 +276,9 @@ services:
     image: ${SERVICE_IMAGE:-shivain22/rms-service}:${SERVICE_VERSION:-latest}
     container_name: rms-service
     depends_on:
-      # Gateway must start first
-      gateway:
-        condition: service_started
-      # Core dependencies (must be healthy)
-      keycloak:
-        condition: service_healthy
-      rms-postgresql:
-        condition: service_healthy
-      elasticsearch:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
-      # Optional dependencies (started is enough, app will retry if needed)
-      kafka:
-        condition: service_started
-      consul-config-loader:
-        condition: service_started
+      # Wait 3 minutes after gateway starts
+      wait-for-gateway:
+        condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
       # Database Configuration
