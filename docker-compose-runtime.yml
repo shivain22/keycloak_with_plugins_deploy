@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   rms-postgresql:
-    image: ${RMS_POSTGRES_IMAGE:-postgres}:${RMS_POSTGRES_VERSION:-16}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
     container_name: rms-postgresql
     environment:
       POSTGRES_DB: ${RMS_DB_NAME:-rms}
@@ -244,6 +244,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
       SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
       SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      # Liquibase Configuration (explicitly set to use service name, not localhost)
+      SPRING_LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_LIQUIBASE_USER: ${RMS_DB_USERNAME:-rms}
+      SPRING_LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      LIQUIBASE_USERNAME: ${RMS_DB_USERNAME:-rms}
+      LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
       # OAuth2/OIDC Configuration
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${GATEWAY_REALM:-gateway}}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${GATEWAY_CLIENT_ID:-gateway-web}
@@ -285,6 +292,13 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
       SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
       SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      # Liquibase Configuration (explicitly set to use service name, not localhost)
+      SPRING_LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_LIQUIBASE_USER: ${RMS_DB_USERNAME:-rms}
+      SPRING_LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      LIQUIBASE_USERNAME: ${RMS_DB_USERNAME:-rms}
+      LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
       # OAuth2/OIDC Configuration
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_SERVICE_ISSUER_URI:-${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${SERVICE_REALM:-rms-service}}}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${SERVICE_CLIENT_ID:-rms-service-web}
