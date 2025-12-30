@@ -1,11 +1,22 @@
--- Initialize schemas and users for Gateway and Service
+-- Initialize schema and users for Gateway and Service
 -- This script runs automatically on first PostgreSQL initialization
 
--- Create schema for Gateway
+-- Create schema for Gateway (in 'rms' database)
 CREATE SCHEMA IF NOT EXISTS rms_gateway;
 
--- Create schema for Service
-CREATE SCHEMA IF NOT EXISTS rms_service;
+-- Create database for Service (if it doesn't exist)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'rms_service') THEN
+    PERFORM dblink_exec('dbname=' || current_database(), 'CREATE DATABASE rms_service');
+  END IF;
+EXCEPTION
+  WHEN undefined_function THEN
+    -- dblink extension not available, use direct SQL
+    -- Note: We can't create database from within a transaction, so this will be handled by a separate script
+    RAISE NOTICE 'Database rms_service will be created separately if needed';
+END
+$$;
 
 -- Create user/role for Gateway
 DO $$
@@ -25,19 +36,14 @@ BEGIN
 END
 $$;
 
--- Grant privileges to Gateway user
+-- Grant privileges to Gateway user (on 'rms' database with 'rms_gateway' schema)
 GRANT ALL PRIVILEGES ON SCHEMA rms_gateway TO rms_gateway;
 GRANT ALL PRIVILEGES ON DATABASE rms TO rms_gateway;
 
--- Grant privileges to Service user
-GRANT ALL PRIVILEGES ON SCHEMA rms_service TO rms_service;
-GRANT ALL PRIVILEGES ON DATABASE rms TO rms_service;
+-- Grant privileges to Service user (on 'rms_service' database - will be applied when database is created)
+GRANT ALL PRIVILEGES ON DATABASE rms_service TO rms_service;
 
 -- Set default privileges for future objects in Gateway schema
 ALTER DEFAULT PRIVILEGES IN SCHEMA rms_gateway GRANT ALL ON TABLES TO rms_gateway;
 ALTER DEFAULT PRIVILEGES IN SCHEMA rms_gateway GRANT ALL ON SEQUENCES TO rms_gateway;
-
--- Set default privileges for future objects in Service schema
-ALTER DEFAULT PRIVILEGES IN SCHEMA rms_service GRANT ALL ON TABLES TO rms_service;
-ALTER DEFAULT PRIVILEGES IN SCHEMA rms_service GRANT ALL ON SEQUENCES TO rms_service;
 
