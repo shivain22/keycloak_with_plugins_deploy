@@ -19,7 +19,7 @@ PHONE_PROVIDER_BRANCH="${PHONE_PROVIDER_BRANCH:-master}"
 
 THEME_REPO_URL="${THEME_REPO_URL:-https://github.com/shivain22/rms-keycloakify-theme.git}"
 THEME_BRANCH="${THEME_BRANCH:-main}"
-THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}"
+THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-all-other-versions.jar}"
 
 # Optional: for private repos / corporate GitHub setups, provide a token.
 # - Pass via compose env: GITHUB_TOKEN=...
@@ -123,21 +123,37 @@ fi
 # Build keycloak theme jars
 npm run build-keycloak-theme
 
-if [[ ! -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
-  echo "ERROR: Missing theme jar dist_keycloak/${THEME_JAR_NAME}" >&2
-  echo "dist_keycloak contents:" >&2
-  ls -1 dist_keycloak >&2 || true
-  exit 1
+# Check if specific theme jar exists, otherwise copy all theme jars
+if [[ -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
+  echo "Found specific theme jar: ${THEME_JAR_NAME}"
+  cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
+else
+  echo "WARNING: Expected theme jar '${THEME_JAR_NAME}' not found. Copying all theme jars..."
+  echo "Available theme jars in dist_keycloak:"
+  ls -1 dist_keycloak/*.jar 2>/dev/null || true
+  
+  # Copy all theme jars (Keycloakify generates multiple jars for different versions)
+  if ls dist_keycloak/*.jar 1> /dev/null 2>&1; then
+    cp -f dist_keycloak/*.jar "${PROVIDERS_DIR}/"
+    echo "✅ Copied all theme jars to providers directory"
+  else
+    echo "ERROR: No theme jars found in dist_keycloak/" >&2
+    exit 1
+  fi
 fi
-
-cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
 popd >/dev/null
 
 echo "=== Verifying required files in providers ==="
 ls -1 "${PROVIDERS_DIR}" || true
 test -f "${PROVIDERS_DIR}/keycloak-phone-provider.jar"
 test -f "${PROVIDERS_DIR}/keycloak-phone-provider-msg91.jar"
-test -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
+
+# Verify at least one theme jar exists (may be different name than expected)
+if ! ls "${PROVIDERS_DIR}"/keycloak-theme-*.jar 1> /dev/null 2>&1; then
+  echo "ERROR: No theme jar found in providers directory" >&2
+  exit 1
+fi
+echo "✅ Theme jar(s) found in providers directory"
 
 echo "=== Build container done ==="
 
