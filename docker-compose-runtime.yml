@@ -244,10 +244,14 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
-      # Database Configuration
+      # Database Configuration (JDBC for blocking operations)
       SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
       SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
       SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      # R2DBC Configuration (Reactive Database Connectivity - use service name, not localhost)
+      SPRING_R2DBC_URL: r2dbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_R2DBC_USERNAME: ${RMS_DB_USERNAME:-rms}
+      SPRING_R2DBC_PASSWORD: ${RMS_DB_PASSWORD:-rms}
       # Liquibase Configuration (explicitly set to use service name, not localhost)
       # Spring Boot Liquibase uses the same datasource by default, but we set it explicitly
       SPRING_LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
@@ -295,10 +299,14 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
-      # Database Configuration
+      # Database Configuration (JDBC for blocking operations)
       SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
       SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
       SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      # R2DBC Configuration (Reactive Database Connectivity - use service name, not localhost)
+      SPRING_R2DBC_URL: r2dbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_R2DBC_USERNAME: ${RMS_DB_USERNAME:-rms}
+      SPRING_R2DBC_PASSWORD: ${RMS_DB_PASSWORD:-rms}
       # Liquibase Configuration (explicitly set to use service name, not localhost)
       # Spring Boot Liquibase uses the same datasource by default, but we set it explicitly
       SPRING_LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
