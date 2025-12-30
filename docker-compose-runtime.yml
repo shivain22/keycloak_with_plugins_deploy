@@ -50,7 +50,9 @@ services:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      # Use zkServer.sh status (available in Confluent image) - checks if ZooKeeper is running
+      # This is more reliable than trying to use nc or telnet which may not be available
+      test: ["CMD-SHELL", "zkServer.sh status 2>&1 | grep -q 'Mode:' || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -102,12 +104,13 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     depends_on:
       zookeeper:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 15
+      # Use kafka-topics to verify broker is fully ready (more reliable than api-versions)
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list > /dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
       start_period: 60s
     restart: unless-stopped
 
@@ -203,16 +206,18 @@ services:
     image: ${GATEWAY_IMAGE:-shivain22/rms-gateway}:${GATEWAY_VERSION:-latest}
     container_name: rms-gateway
     depends_on:
+      # Core dependencies (must be healthy)
       keycloak:
         condition: service_healthy
       rms-postgresql:
         condition: service_healthy
-      consul:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      consul:
+        condition: service_healthy
+      # Optional dependencies (started is enough, app will retry if needed)
+      kafka:
+        condition: service_started
       consul-config-loader:
         condition: service_started
     environment:
@@ -253,18 +258,21 @@ services:
     image: ${SERVICE_IMAGE:-shivain22/rms-service}:${SERVICE_VERSION:-latest}
     container_name: rms-service
     depends_on:
+      # Gateway must start first
       gateway:
         condition: service_started
+      # Core dependencies (must be healthy)
       keycloak:
         condition: service_healthy
       rms-postgresql:
         condition: service_healthy
-      consul:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
       elasticsearch:
         condition: service_healthy
+      consul:
+        condition: service_healthy
+      # Optional dependencies (started is enough, app will retry if needed)
+      kafka:
+        condition: service_started
       consul-config-loader:
         condition: service_started
     environment:
