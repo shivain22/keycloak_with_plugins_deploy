@@ -255,6 +255,9 @@ services:
       SPRING_LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
       # Kafka Configuration (use service name for internal Docker communication)
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Consul Configuration (use service name for internal Docker communication)
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: ${CONSUL_PORT:-8500}
       # OAuth2/OIDC Configuration
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${GATEWAY_REALM:-gateway}}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${GATEWAY_CLIENT_ID:-gateway-web}
@@ -303,6 +306,9 @@ services:
       SPRING_LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
       # Kafka Configuration (use service name for internal Docker communication)
       SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      # Consul Configuration (use service name for internal Docker communication)
+      SPRING_CLOUD_CONSUL_HOST: consul
+      SPRING_CLOUD_CONSUL_PORT: ${CONSUL_PORT:-8500}
       # OAuth2/OIDC Configuration
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_SERVICE_ISSUER_URI:-${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${SERVICE_REALM:-rms-service}}}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${SERVICE_CLIENT_ID:-rms-service-web}
