@@ -90,8 +90,16 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_PORT:-9295}
+      # Listen on all interfaces for internal Docker network communication
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+      # Advertise using service name for Docker containers (internal) and localhost for host access
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      # Auto-create topics and set default partitions
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_NUM_PARTITIONS: 1
+      KAFKA_DEFAULT_REPLICATION_FACTOR: 1
     depends_on:
       zookeeper:
         condition: service_started
