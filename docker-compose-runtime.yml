@@ -26,7 +26,7 @@ services:
     image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
     container_name: rms-postgresql
     environment:
-      POSTGRES_DB: ${RMS_DB_NAME:-rms}
+      POSTGRES_DB: ${RMS_DB_NAME:-rms_gateway}
       POSTGRES_USER: ${RMS_DB_USERNAME:-rms}
       POSTGRES_PASSWORD: ${RMS_DB_PASSWORD:-rms}
     ports:
@@ -34,7 +34,8 @@ services:
     volumes:
       - rms_postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init-schemas.sql:/docker-entrypoint-initdb.d/01-init-schemas.sql:ro
-      - ./docker/postgres/02-init-service-db.sh:/docker-entrypoint-initdb.d/02-init-service-db.sh:ro
+      - ./docker/postgres/01-init-gateway-db.sh:/docker-entrypoint-initdb.d/02-init-gateway-db.sh:ro
+      - ./docker/postgres/02-init-service-db.sh:/docker-entrypoint-initdb.d/03-init-service-db.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 5s
@@ -250,25 +251,24 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
-      # Database Configuration (Gateway uses 'rms_gateway' schema)
-      SPRING_DATASOURCE_URL: ${GATEWAY_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms?currentSchema=rms_gateway}}
+      # Database Configuration (Gateway uses 'rms_gateway' database with 'public' schema)
+      SPRING_DATASOURCE_URL: ${GATEWAY_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_gateway}}
       SPRING_DATASOURCE_USERNAME: ${GATEWAY_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_gateway}}
       SPRING_DATASOURCE_PASSWORD: ${GATEWAY_DATASOURCE_PASSWORD:-${SPRING_DATASOURCE_PASSWORD:-rms_gateway}}
-      SPRING_R2DBC_URL: ${GATEWAY_R2DBC_URL:-${SPRING_R2DBC_URL:-r2dbc:postgresql://rms-postgresql:5432/rms?schema=rms_gateway}}
+      SPRING_R2DBC_URL: ${GATEWAY_R2DBC_URL:-${SPRING_R2DBC_URL:-r2dbc:postgresql://rms-postgresql:5432/rms_gateway}}
       SPRING_R2DBC_USERNAME: ${GATEWAY_R2DBC_USERNAME:-${SPRING_R2DBC_USERNAME:-rms_gateway}}
       SPRING_R2DBC_PASSWORD: ${GATEWAY_R2DBC_PASSWORD:-${SPRING_R2DBC_PASSWORD:-rms_gateway}}
-      # Custom R2DBC config variables used by MultiTenantDatabaseConfig (Gateway uses database 'rms' with schema 'rms_gateway')
+      # Custom R2DBC config variables used by MultiTenantDatabaseConfig (Gateway uses database 'rms_gateway' with 'public' schema)
       DB_HOST: ${DB_HOST:-rms-postgresql}
       DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-rms}
-      DB_SCHEMA: ${DB_SCHEMA:-rms_gateway}
+      DB_NAME: ${DB_NAME:-rms_gateway}
       DB_USERNAME: ${DB_USERNAME:-rms_gateway}
       DB_PASSWORD: ${DB_PASSWORD:-rms_gateway}
-      SPRING_LIQUIBASE_URL: ${GATEWAY_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms?currentSchema=rms_gateway}}
+      SPRING_LIQUIBASE_URL: ${GATEWAY_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_gateway?currentSchema=public}}
       SPRING_LIQUIBASE_USER: ${GATEWAY_LIQUIBASE_USER:-${SPRING_LIQUIBASE_USER:-rms_gateway}}
       SPRING_LIQUIBASE_PASSWORD: ${GATEWAY_LIQUIBASE_PASSWORD:-${SPRING_LIQUIBASE_PASSWORD:-rms_gateway}}
-      # Liquibase default schema (required for schema-specific connections)
-      SPRING_LIQUIBASE_DEFAULT_SCHEMA: ${GATEWAY_LIQUIBASE_DEFAULT_SCHEMA:-${SPRING_LIQUIBASE_DEFAULT_SCHEMA:-rms_gateway}}
+      # Liquibase default schema
+      SPRING_LIQUIBASE_DEFAULT_SCHEMA: ${GATEWAY_LIQUIBASE_DEFAULT_SCHEMA:-${SPRING_LIQUIBASE_DEFAULT_SCHEMA:-public}}
       # Liquibase checksum validation (set to true to clear checksums if changeset was modified)
       SPRING_LIQUIBASE_CLEAR_CHECK_SUMS: ${SPRING_LIQUIBASE_CLEAR_CHECK_SUMS:-false}
       # Infrastructure Services (from env.example - all use service names)
@@ -309,8 +309,8 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
-      # Database Configuration (Service uses 'rms_service' schema)
-      SPRING_DATASOURCE_URL: ${SERVICE_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms?currentSchema=rms_service}}
+      # Database Configuration (Service uses 'rms_service' database with 'public' schema)
+      SPRING_DATASOURCE_URL: ${SERVICE_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service}}
       SPRING_DATASOURCE_USERNAME: ${SERVICE_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_service}}
       SPRING_DATASOURCE_PASSWORD: ${SERVICE_DATASOURCE_PASSWORD:-${SPRING_DATASOURCE_PASSWORD:-rms_service}}
       SPRING_R2DBC_URL: ${SERVICE_R2DBC_URL:-${SPRING_R2DBC_URL:-r2dbc:postgresql://rms-postgresql:5432/rms_service}}
