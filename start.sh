@@ -1,25 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Ensure script is run with bash (not sh)
+# Smart startup script with build detection
+# Usage:
+#   ./start.sh              # Auto-detect if build is needed
+#   ./start.sh --build      # Force build
+#   ./start.sh --no-build   # Skip build, just start services
+#   ./start.sh --logs       # Tail logs after start
+
+# Ensure script is run with bash
 if [ -z "${BASH_VERSION:-}" ]; then
   echo "ERROR: This script requires bash. Please run: bash $0" >&2
   exit 1
 fi
 
-# One-command bootstrap for this repo.
-# - Stops any existing containers
-# - Builds & runs the "artifacts" one-shot container (produces ./providers/*.jar)
-# - Starts Postgres + Keycloak
-#
-# Usage:
-#   ./start.sh
-#
-# Optional:
-#   ./start.sh --logs      # tail keycloak logs after start
-#   ./start.sh --rebuild   # force rebuild of the artifacts image
-
-# Get script directory (compatible with both bash and sh)
+# Get script directory
 if [ -n "${BASH_SOURCE:-}" ]; then
   REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 else
@@ -27,13 +22,18 @@ else
 fi
 cd "${REPO_ROOT}"
 
-REBUILD=0
+# Parse arguments
+FORCE_BUILD=0
+SKIP_BUILD=0
 TAIL_LOGS=0
+USE_RUNTIME=0
 
 for arg in "$@"; do
   case "${arg}" in
-    --rebuild) REBUILD=1 ;;
+    --build) FORCE_BUILD=1 ;;
+    --no-build) SKIP_BUILD=1 ;;
     --logs) TAIL_LOGS=1 ;;
+    --runtime) USE_RUNTIME=1 ;;
     *) echo "Unknown arg: ${arg}" >&2; exit 2 ;;
   esac
 done
@@ -47,64 +47,112 @@ if [ ! -f ".env" ]; then
   echo "✅ Created .env file. Review and update if needed."
 fi
 
-echo "==> Stopping existing containers (if any) ..."
-docker compose down 2>/dev/null || true
-
-echo "==> Generating realm configurations ..."
-ENV_VAR="${ENVIRONMENT:-local}"
-bash scripts/generate-realm-configs.sh "${ENV_VAR}"
-if [ $? -ne 0 ]; then
-  echo "ERROR: Realm config generation failed!" >&2
-  exit 1
+# Determine which compose file to use
+COMPOSE_FILE="docker-compose.yml"
+if [ "${USE_RUNTIME}" = "1" ]; then
+  COMPOSE_FILE="docker-compose-runtime.yml"
 fi
 
-echo "==> Building artifacts (providers) ..."
-# Build the image first if --rebuild was requested
-if [ "${REBUILD}" = "1" ]; then
-  echo "  (rebuilding artifacts image...)"
-  docker compose build artifacts
-fi
+# Function to check if git has new commits
+check_git_changes() {
+  local repo_url="$1"
+  local branch="$2"
+  local repo_name=$(basename "$repo_url" .git)
+  
+  # Check if we have a local clone to compare
+  if [ -d "/tmp/${repo_name}" ]; then
+    cd "/tmp/${repo_name}"
+    git fetch origin "${branch}" >/dev/null 2>&1 || return 1
+    LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "")
+    REMOTE=$(git rev-parse "origin/${branch}" 2>/dev/null || echo "")
+    cd - >/dev/null
+    if [ -n "$LOCAL" ] && [ -n "$REMOTE" ] && [ "$LOCAL" != "$REMOTE" ]; then
+      return 0  # Changes detected
+    fi
+  fi
+  return 1  # No changes
+}
 
-# Use 'docker compose run' for one-shot containers (properly handles exit codes)
-if ! docker compose run --rm artifacts; then
-  echo "ERROR: Artifacts build failed!" >&2
-  exit 1
-fi
+# Function to check if Docker image exists and is up to date
+check_image_exists() {
+  local image="$1"
+  local tag="$2"
+  docker image inspect "${image}:${tag}" >/dev/null 2>&1
+}
 
-echo "==> Building and pushing Gateway and Service Docker images ..."
-# Build the apps-builder image first if --rebuild was requested
-if [ "${REBUILD}" = "1" ]; then
-  echo "  (rebuilding apps-builder image...)"
-  docker compose build apps-builder
-fi
+# Determine if build is needed
+NEED_BUILD=0
 
-# Build and push gateway and service images
-if ! docker compose run --rm apps-builder; then
-  echo "ERROR: Apps build failed!" >&2
-  exit 1
-fi
-
-echo "==> Starting Postgres + Keycloak + Gateway + Service ..."
-COMPOSE_BUILD_FLAG=""
-if [ "${REBUILD}" = "1" ]; then
-  COMPOSE_BUILD_FLAG="--build"
-fi
-docker compose up ${COMPOSE_BUILD_FLAG} -d
-
-echo "==> Done."
-# Read KEYCLOAK_HTTP_PORT from .env file (docker compose reads it automatically)
-KEYCLOAK_PORT="9292"
-if [ -f .env ]; then
-  ENV_PORT=$(grep -E "^KEYCLOAK_HTTP_PORT=" .env 2>/dev/null | cut -d'=' -f2 | tr -d ' "' || echo "")
-  if [ -n "${ENV_PORT}" ]; then
-    KEYCLOAK_PORT="${ENV_PORT}"
+if [ "${FORCE_BUILD}" = "1" ]; then
+  NEED_BUILD=1
+  echo "==> Build forced via --build flag"
+elif [ "${SKIP_BUILD}" = "1" ]; then
+  NEED_BUILD=0
+  echo "==> Build skipped via --no-build flag"
+else
+  # Auto-detect: check if images exist and if there are git changes
+  source .env 2>/dev/null || true
+  
+  GATEWAY_IMAGE="${GATEWAY_IMAGE:-shivain22/rms-gateway}"
+  SERVICE_IMAGE="${SERVICE_IMAGE:-shivain22/rms-service}"
+  GATEWAY_VERSION="${GATEWAY_VERSION:-latest}"
+  SERVICE_VERSION="${SERVICE_VERSION:-latest}"
+  
+  if ! check_image_exists "${GATEWAY_IMAGE}" "${GATEWAY_VERSION}" || \
+     ! check_image_exists "${SERVICE_IMAGE}" "${SERVICE_VERSION}"; then
+    NEED_BUILD=1
+    echo "==> Docker images not found, build required"
+  elif check_git_changes "${GATEWAY_REPO_URL:-}" "${GATEWAY_BRANCH:-master}" || \
+       check_git_changes "${SERVICE_REPO_URL:-}" "${SERVICE_BRANCH:-master}"; then
+    NEED_BUILD=1
+    echo "==> Git changes detected, build required"
+  else
+    echo "==> No changes detected, skipping build"
   fi
 fi
-echo "Keycloak should be available at: http://localhost:${KEYCLOAK_PORT}"
 
-if [ "${TAIL_LOGS}" = "1" ]; then
-  echo "==> Tailing Keycloak logs (Ctrl+C to stop) ..."
-  docker compose logs -f --tail 200 keycloak
+echo "==> Stopping existing containers (if any) ..."
+docker compose -f "${COMPOSE_FILE}" down 2>/dev/null || true
+
+if [ "${USE_RUNTIME}" = "0" ]; then
+  # Full setup: artifacts + apps builder
+  echo "==> Generating realm configurations ..."
+  ENV_VAR="${ENVIRONMENT:-prod}"
+  bash scripts/generate-realm-configs.sh "${ENV_VAR}" || {
+    echo "ERROR: Realm config generation failed!" >&2
+    exit 1
+  }
+
+  if [ "${NEED_BUILD}" = "1" ]; then
+    echo "==> Building Keycloak artifacts (providers) ..."
+    docker compose build artifacts
+    docker compose run --rm artifacts || {
+      echo "ERROR: Artifacts build failed!" >&2
+      exit 1
+    }
+
+    echo "==> Building and pushing Gateway and Service Docker images ..."
+    docker compose build apps-builder
+    docker compose run --rm apps-builder || {
+      echo "ERROR: Apps build failed!" >&2
+      exit 1
+    }
+  fi
 fi
 
+echo "==> Starting services ..."
+docker compose -f "${COMPOSE_FILE}" up -d
 
+echo "==> Done."
+echo ""
+echo "Services are starting. Check status with:"
+echo "  docker compose -f ${COMPOSE_FILE} ps"
+echo ""
+echo "View logs with:"
+echo "  docker compose -f ${COMPOSE_FILE} logs -f"
+
+if [ "${TAIL_LOGS}" = "1" ]; then
+  echo ""
+  echo "==> Tailing logs (Ctrl+C to stop) ..."
+  docker compose -f "${COMPOSE_FILE}" logs -f --tail 200
+fi

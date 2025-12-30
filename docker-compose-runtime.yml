@@ -4,7 +4,7 @@ services:
   # ===================================================================
   
   db:
-    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
     container_name: keycloak-db
     environment:
       POSTGRES_DB: ${KC_DB_NAME:-keycloak}
@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
 
   rms-postgresql:
-    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
     container_name: rms-postgresql
     environment:
       POSTGRES_DB: ${RMS_DB_NAME:-rms}
@@ -244,24 +244,22 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
-      # Database Configuration (JDBC for blocking operations)
-      SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
-      SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
-      SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
-      # R2DBC Configuration (Reactive Database Connectivity - use service name, not localhost)
-      SPRING_R2DBC_URL: r2dbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
-      SPRING_R2DBC_USERNAME: ${RMS_DB_USERNAME:-rms}
-      SPRING_R2DBC_PASSWORD: ${RMS_DB_PASSWORD:-rms}
-      # Liquibase Configuration (explicitly set to use service name, not localhost)
-      # Spring Boot Liquibase uses the same datasource by default, but we set it explicitly
-      SPRING_LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
-      SPRING_LIQUIBASE_USER: ${RMS_DB_USERNAME:-rms}
-      SPRING_LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
-      # Kafka Configuration (use service name for internal Docker communication)
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      # Consul Configuration (use service name for internal Docker communication)
-      SPRING_CLOUD_CONSUL_HOST: consul
-      SPRING_CLOUD_CONSUL_PORT: ${CONSUL_PORT:-8500}
+      # Database Configuration (from env.example - all use service names)
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-rms}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-rms}
+      SPRING_R2DBC_URL: ${SPRING_R2DBC_URL:-r2dbc:postgresql://rms-postgresql:5432/rms}
+      SPRING_R2DBC_USERNAME: ${SPRING_R2DBC_USERNAME:-rms}
+      SPRING_R2DBC_PASSWORD: ${SPRING_R2DBC_PASSWORD:-rms}
+      SPRING_LIQUIBASE_URL: ${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms}
+      SPRING_LIQUIBASE_USER: ${SPRING_LIQUIBASE_USER:-rms}
+      SPRING_LIQUIBASE_PASSWORD: ${SPRING_LIQUIBASE_PASSWORD:-rms}
+      # Infrastructure Services (from env.example - all use service names)
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_CLOUD_CONSUL_HOST: ${SPRING_CLOUD_CONSUL_HOST:-consul}
+      SPRING_CLOUD_CONSUL_PORT: ${SPRING_CLOUD_CONSUL_PORT:-8500}
+      SPRING_ELASTICSEARCH_URIS: ${SPRING_ELASTICSEARCH_URIS:-http://elasticsearch:9200}
+      SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES: ${SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES:-elasticsearch:9200}
       # OAuth2/OIDC Configuration
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${GATEWAY_REALM:-gateway}}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${GATEWAY_CLIENT_ID:-gateway-web}
@@ -273,11 +271,6 @@ services:
       KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
       KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-${KEYCLOAK_ADMIN:-admin}}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
-      # Elasticsearch Configuration
-      SPRING_ELASTICSEARCH_URIS: ${SPRING_ELASTICSEARCH_URIS:-http://elasticsearch:9200}
-      SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES: ${SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES:-elasticsearch:9200}
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-elasticsearch}
-      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
     ports:
       - "${GATEWAY_HTTP_PORT:-9293}:8080"
     extra_hosts:
@@ -299,34 +292,27 @@ services:
         condition: service_completed_successfully
     environment:
       SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
-      # Database Configuration (JDBC for blocking operations)
-      SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
-      SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
-      SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
-      # R2DBC Configuration (Reactive Database Connectivity - use service name, not localhost)
-      SPRING_R2DBC_URL: r2dbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
-      SPRING_R2DBC_USERNAME: ${RMS_DB_USERNAME:-rms}
-      SPRING_R2DBC_PASSWORD: ${RMS_DB_PASSWORD:-rms}
-      # Liquibase Configuration (explicitly set to use service name, not localhost)
-      # Spring Boot Liquibase uses the same datasource by default, but we set it explicitly
-      SPRING_LIQUIBASE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
-      SPRING_LIQUIBASE_USER: ${RMS_DB_USERNAME:-rms}
-      SPRING_LIQUIBASE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
-      # Kafka Configuration (use service name for internal Docker communication)
-      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      # Consul Configuration (use service name for internal Docker communication)
-      SPRING_CLOUD_CONSUL_HOST: consul
-      SPRING_CLOUD_CONSUL_PORT: ${CONSUL_PORT:-8500}
+      # Database Configuration (from env.example - all use service names)
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-rms}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD:-rms}
+      SPRING_R2DBC_URL: ${SPRING_R2DBC_URL:-r2dbc:postgresql://rms-postgresql:5432/rms}
+      SPRING_R2DBC_USERNAME: ${SPRING_R2DBC_USERNAME:-rms}
+      SPRING_R2DBC_PASSWORD: ${SPRING_R2DBC_PASSWORD:-rms}
+      SPRING_LIQUIBASE_URL: ${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms}
+      SPRING_LIQUIBASE_USER: ${SPRING_LIQUIBASE_USER:-rms}
+      SPRING_LIQUIBASE_PASSWORD: ${SPRING_LIQUIBASE_PASSWORD:-rms}
+      # Infrastructure Services (from env.example - all use service names)
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
+      SPRING_CLOUD_CONSUL_HOST: ${SPRING_CLOUD_CONSUL_HOST:-consul}
+      SPRING_CLOUD_CONSUL_PORT: ${SPRING_CLOUD_CONSUL_PORT:-8500}
+      SPRING_ELASTICSEARCH_URIS: ${SPRING_ELASTICSEARCH_URIS:-http://elasticsearch:9200}
+      SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES: ${SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES:-elasticsearch:9200}
       # OAuth2/OIDC Configuration
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_SERVICE_ISSUER_URI:-${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${SERVICE_REALM:-rms-service}}}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${SERVICE_CLIENT_ID:-rms-service-web}
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${SERVICE_CLIENT_SECRET:-B1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV}
       SERVER_PORT: 8080
-      # Elasticsearch Configuration
-      SPRING_ELASTICSEARCH_URIS: ${SPRING_ELASTICSEARCH_URIS:-http://elasticsearch:9200}
-      SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES: ${SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES:-elasticsearch:9200}
-      ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-elasticsearch}
-      ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
     ports:
       - "${SERVICE_HTTP_PORT:-9294}:8080"
     extra_hosts:
