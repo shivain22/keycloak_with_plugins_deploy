@@ -1,0 +1,283 @@
+services:
+  artifacts:
+    build:
+      context: ./docker/builder
+    container_name: keycloak-artifacts-builder
+    environment:
+      # Override any of these in .env if needed
+      PHONE_PROVIDER_REPO_URL: ${PHONE_PROVIDER_REPO_URL:-https://github.com/shivain22/keycloak-phone-provider.git}
+      PHONE_PROVIDER_BRANCH: ${PHONE_PROVIDER_BRANCH:-master}
+      THEME_REPO_URL: ${THEME_REPO_URL:-https://github.com/shivain22/rms-keycloakify-theme.git}
+      THEME_BRANCH: ${THEME_BRANCH:-main}
+      THEME_JAR_NAME: ${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}
+      # Optional (needed if a repo is private): GitHub token with repo read access
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # Shared output for Keycloak provider/theme jars
+      - ./providers:/work/providers
+      # Maven cache to avoid flaky re-downloads
+      - m2_cache:/m2
+    restart: "no"
+
+  apps-builder:
+    build:
+      context: ./docker/builder
+      dockerfile: Dockerfile.apps
+    container_name: apps-builder
+    environment:
+      # Override any of these in .env if needed
+      GATEWAY_REPO_URL: ${GATEWAY_REPO_URL:-https://github.com/shivain22/rms.git}
+      GATEWAY_BRANCH: ${GATEWAY_BRANCH:-master}
+      SERVICE_REPO_URL: ${SERVICE_REPO_URL:-https://github.com/shivain22/rms-service.git}
+      SERVICE_BRANCH: ${SERVICE_BRANCH:-master}
+      DOCKER_USERNAME: ${DOCKER_USERNAME:-shivain22}
+      DOCKER_PASSWORD: ${DOCKER_PASSWORD:-Asd!@#123}
+      # Optional (needed if a repo is private): GitHub token with repo read access
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+    volumes:
+      # Maven cache to avoid flaky re-downloads
+      - m2_cache:/m2
+    restart: "no"
+
+  db:
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-16}
+    container_name: keycloak-db
+    depends_on:
+      artifacts:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: ${KC_DB_NAME:-keycloak}
+      POSTGRES_USER: ${KC_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+    ports:
+      - "${POSTGRES_PORT:-5434}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  rms-postgresql:
+    image: ${RMS_POSTGRES_IMAGE:-postgres}:${RMS_POSTGRES_VERSION:-16}
+    container_name: rms-postgresql
+    depends_on:
+      artifacts:
+        condition: service_completed_successfully
+    environment:
+      POSTGRES_DB: ${RMS_DB_NAME:-rms}
+      POSTGRES_USER: ${RMS_DB_USERNAME:-rms}
+      POSTGRES_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+    ports:
+      - "${RMS_POSTGRES_PORT:-5435}:5432"
+    volumes:
+      - rms_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: rms-kafka
+    ports:
+      - '${KAFKA_PORT:-9295}:9092'
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:${KAFKA_PORT:-9295}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      zookeeper:
+        condition: service_started
+    restart: unless-stopped
+
+  consul-config-loader:
+    image: jhipster/consul-config-loader:v0.4.1
+    container_name: rms-consul-config-loader
+    volumes:
+      - ${CONSUL_CONFIG_PATH:-./consul-config}:/config
+    environment:
+      - INIT_SLEEP_SECONDS=5
+      - CONSUL_URL=consul
+      - CONSUL_PORT=8500
+    depends_on:
+      consul:
+        condition: service_started
+    restart: unless-stopped
+
+  consul:
+    image: consul:1.15.4
+    container_name: rms-consul
+    ports:
+      - '${CONSUL_PORT:-8500}:8500'
+      - '8300:8300'
+      - '8600:8600'
+    command: consul agent -dev -ui -client 0.0.0.0 -log-level=INFO
+    restart: unless-stopped
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: rms-zookeeper
+    ports:
+      - '${ZOOKEEPER_PORT:-2181}:2181'
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: rms-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - 'ES_JAVA_OPTS=-Xms512m -Xmx512m'
+    ports:
+      - '${ELASTICSEARCH_PORT:-9200}:9200'
+    restart: unless-stopped
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:-quay.io/keycloak/keycloak}:${KEYCLOAK_VERSION:-latest}
+    container_name: keycloak
+    depends_on:
+      artifacts:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+    volumes:
+      # Make the built jars available to Keycloak
+      - ./providers:/opt/keycloak/providers
+      # Import realms on first start (or when --import-realm is used)
+      - ./realm-import:/opt/keycloak/data/import
+      # Entrypoint script for debug logging configuration
+      - ./docker/keycloak-entrypoint.sh:/opt/keycloak-entrypoint.sh:ro
+    entrypoint: ["/bin/bash", "/opt/keycloak-entrypoint.sh"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: postgres
+      KC_DB_URL_HOST: db
+      KC_DB_URL_PORT: 5432
+      KC_DB_URL_DATABASE: ${KC_DB_NAME:-keycloak}
+      KC_DB_USERNAME: ${KC_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD:-keycloak}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      # Debug logging (enabled by default, set KEYCLOAK_DISABLE_DEBUG=true to disable)
+      # The entrypoint script will set KC_LOG_LEVEL=DEBUG by default
+      # If KEYCLOAK_DISABLE_DEBUG=true, it will set KC_LOG_LEVEL=INFO
+      # You can also directly set KC_LOG_LEVEL to override (DEBUG, INFO, WARN, ERROR)
+      KEYCLOAK_DISABLE_DEBUG: ${KEYCLOAK_DISABLE_DEBUG:-}
+      KC_LOG_LEVEL: ${KC_LOG_LEVEL:-}
+      # Proxy configuration for reverse proxy/load balancer
+      KC_PROXY: ${KC_PROXY:-edge}
+      KC_PROXY_HEADERS: ${KC_PROXY_HEADERS:-xforwarded}
+      KC_HOSTNAME: ${KC_HOSTNAME:-}
+      KC_HOSTNAME_STRICT_HTTPS: ${KC_HOSTNAME_STRICT_HTTPS:-false}
+      # Provider runtime configuration (read by the phone provider)
+      MSG91_URL: ${MSG91_URL:-}
+      MSG91_AUTH_KEY: ${MSG91_AUTH_KEY:-}
+      MSG91_TEMPLATE_ID: ${MSG91_TEMPLATE_ID:-}
+    ports:
+      - "${KEYCLOAK_HTTP_PORT:-9292}:8080"
+    command:
+      - start-dev
+      - --http-port=8080
+      - --hostname-strict=false
+      - --proxy-headers=${KC_PROXY_HEADERS:-xforwarded}
+      - --import-realm
+      # SMS Provider Configuration
+      - --spi-phone-default-service=${SMS_PROVIDER:-msg91}
+      - --spi-phone-default-token-expires-in=${SMS_TOKEN_EXPIRES:-60}
+      - --spi-phone-default-source-hour-maximum=${SMS_SOURCE_HOUR_MAX:-10}
+      - --spi-phone-default-target-hour-maximum=${SMS_TARGET_HOUR_MAX:-3}
+      # Phone Provider Configuration (realm-scoped for "ujwal")
+      - --spi-phone-default-ujwal-duplicate-phone=${DUPLICATE_PHONE:-false}
+      - --spi-phone-default-ujwal-default-number-regex=${PHONE_REGEX:-^\\+?\\d+$}
+      - --spi-phone-default-ujwal-valid-phone=${VALID_PHONE:-true}
+      - --spi-phone-default-ujwal-canonicalize-phone-numbers=${CANONICALIZE_PHONE:-E164}
+      - --spi-phone-default-ujwal-phone-default-region=${PHONE_DEFAULT_REGION:-IN}
+      - --spi-phone-default-ujwal-compatible=${PHONE_COMPATIBLE:-false}
+      - --spi-phone-default-ujwal-otp-expires=${OTP_EXPIRES:-3600}
+      # MSG91 sender configuration (used by msg91 sender impl)
+      - --spi-message-sender-service.msg91.url=${MSG91_URL:-https://control.msg91.com/api/v5/flow}
+      - --spi-message-sender-service.msg91.authKey=${MSG91_AUTH_KEY:-CHANGE_ME}
+      - --spi-message-sender-service.msg91.templateId=${MSG91_TEMPLATE_ID:-CHANGE_ME}
+    restart: unless-stopped
+
+  gateway:
+    image: ${GATEWAY_IMAGE:-shivain22/rms-gateway}:${GATEWAY_VERSION:-latest}
+    container_name: rms-gateway
+    depends_on:
+      apps-builder:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+      rms-postgresql:
+        condition: service_healthy
+      consul:
+        condition: service_started
+      kafka:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
+      SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/${GATEWAY_REALM:-gateway}}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${GATEWAY_CLIENT_ID:-gateway-web}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${GATEWAY_CLIENT_SECRET:-M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h}
+      SERVER_PORT: 8080
+      # Keycloak Admin Client Configuration (required for realm management)
+      # Spring Boot relaxed binding: KEYCLOAK_ADMIN_SERVER_URL maps to keycloak.admin.server-url
+      KEYCLOAK_ADMIN_SERVER_URL: ${KEYCLOAK_ADMIN_SERVER_URL:-http://keycloak:8080}
+      KEYCLOAK_ADMIN_REALM: ${KEYCLOAK_ADMIN_REALM:-master}
+      KEYCLOAK_ADMIN_CLIENT_ID: ${KEYCLOAK_ADMIN_CLIENT_ID:-admin-cli}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-${KEYCLOAK_ADMIN:-admin}}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "${GATEWAY_HTTP_PORT:-9293}:8080"
+    restart: unless-stopped
+
+  service:
+    image: ${SERVICE_IMAGE:-shivain22/rms-service}:${SERVICE_VERSION:-latest}
+    container_name: rms-service
+    depends_on:
+      apps-builder:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+      rms-postgresql:
+        condition: service_healthy
+      consul:
+        condition: service_started
+      kafka:
+        condition: service_started
+      elasticsearch:
+        condition: service_started
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://rms-postgresql:5432/${RMS_DB_NAME:-rms}
+      SPRING_DATASOURCE_USERNAME: ${RMS_DB_USERNAME:-rms}
+      SPRING_DATASOURCE_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_SERVICE_ISSUER_URI:-${KEYCLOAK_ISSUER_URI:-http://keycloak:8080/realms/${SERVICE_REALM:-rms-service}}}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${SERVICE_CLIENT_ID:-rms-service-web}
+      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${SERVICE_CLIENT_SECRET:-B1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV}
+      SERVER_PORT: 8080
+    ports:
+      - "${SERVICE_HTTP_PORT:-9294}:8080"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  rms_postgres_data:
+  m2_cache:
+
+
