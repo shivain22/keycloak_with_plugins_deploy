@@ -1,14 +1,17 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Quick script to set up .env file from env.example
 
 if [ -f ".env" ]; then
   echo "WARNING: .env file already exists!"
-  read -p "Do you want to overwrite it? (y/N): " -n 1 -r
-  echo
-  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    echo "Aborted. .env file not changed."
-    exit 0
-  fi
+  printf "Do you want to overwrite it? (y/N): "
+  read REPLY
+  case "$REPLY" in
+    [Yy]*) ;;
+    *) 
+      echo "Aborted. .env file not changed."
+      exit 0
+      ;;
+  esac
 fi
 
 cp env.example .env
