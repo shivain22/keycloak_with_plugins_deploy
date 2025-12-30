@@ -314,7 +314,7 @@ services:
       DB_NAME: ${DB_NAME:-rms_service}
       DB_USERNAME: ${DB_USERNAME:-rms_service}
       DB_PASSWORD: ${DB_PASSWORD:-rms_service}
-      SPRING_LIQUIBASE_URL: ${SERVICE_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service}}
+      SPRING_LIQUIBASE_URL: ${SERVICE_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service?currentSchema=public}}
       SPRING_LIQUIBASE_USER: ${SERVICE_LIQUIBASE_USER:-${SPRING_LIQUIBASE_USER:-rms_service}}
       SPRING_LIQUIBASE_PASSWORD: ${SERVICE_LIQUIBASE_PASSWORD:-${SPRING_LIQUIBASE_PASSWORD:-rms_service}}
       # Liquibase checksum validation (set to true to clear checksums if changeset was modified)

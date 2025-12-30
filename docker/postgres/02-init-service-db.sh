@@ -14,8 +14,21 @@ EOSQL
 
 # Connect to rms_service database and grant schema privileges
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "rms_service" <<-EOSQL
+    -- Ensure public schema exists (should exist by default, but ensure it)
+    CREATE SCHEMA IF NOT EXISTS public;
+    
+    -- Grant usage and create privileges on public schema
+    GRANT USAGE ON SCHEMA public TO rms_service;
+    GRANT CREATE ON SCHEMA public TO rms_service;
+    
+    -- Grant privileges on existing objects
     GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO rms_service;
     GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO rms_service;
+    
+    -- Set default privileges for future objects
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO rms_service;
     ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO rms_service;
+    
+    -- Set default schema for the user (optional, but helps)
+    ALTER USER rms_service SET search_path TO public;
 EOSQL
