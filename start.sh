@@ -6,6 +6,7 @@ set -euo pipefail
 #   ./start.sh              # Auto-detect if build is needed
 #   ./start.sh --build      # Force build
 #   ./start.sh --no-build   # Skip build, just start services
+#   ./start.sh --pull       # Pull latest images from Docker Hub (instead of building)
 #   ./start.sh --runtime    # Use runtime compose (no builders)
 #   ./start.sh --logs       # Tail logs after start
 #   ./start.sh --clean      # Remove volumes (useful when postgres version changes)
@@ -28,6 +29,7 @@ cd "${REPO_ROOT}"
 # Parse arguments
 FORCE_BUILD=0
 SKIP_BUILD=0
+PULL_IMAGES=0
 TAIL_LOGS=0
 USE_RUNTIME=0
 CLEAN_VOLUMES=0
@@ -37,6 +39,7 @@ for arg in "$@"; do
   case "${arg}" in
     --build) FORCE_BUILD=1 ;;
     --no-build) SKIP_BUILD=1 ;;
+    --pull) PULL_IMAGES=1 ;;
     --logs) TAIL_LOGS=1 ;;
     --runtime) USE_RUNTIME=1 ;;
     --clean) CLEAN_VOLUMES=1 ;;
@@ -104,7 +107,10 @@ check_image_exists() {
 # Determine if build is needed
 NEED_BUILD=0
 
-if [ "${FORCE_BUILD}" = "1" ]; then
+if [ "${PULL_IMAGES}" = "1" ]; then
+  NEED_BUILD=0
+  echo "==> Pull mode: will pull images from Docker Hub instead of building"
+elif [ "${FORCE_BUILD}" = "1" ]; then
   NEED_BUILD=1
   echo "==> Build forced via --build flag"
 elif [ "${SKIP_BUILD}" = "1" ]; then
@@ -150,7 +156,28 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     exit 1
   }
 
-  if [ "${NEED_BUILD}" = "1" ]; then
+  if [ "${PULL_IMAGES}" = "1" ]; then
+    # Pull images from Docker Hub
+    source .env 2>/dev/null || true
+    GATEWAY_IMAGE="${GATEWAY_IMAGE:-shivain22/rms-gateway}"
+    SERVICE_IMAGE="${SERVICE_IMAGE:-shivain22/rms-service}"
+    GATEWAY_VERSION="${GATEWAY_VERSION:-latest}"
+    SERVICE_VERSION="${SERVICE_VERSION:-latest}"
+    
+    echo "==> Pulling Gateway image: ${GATEWAY_IMAGE}:${GATEWAY_VERSION} ..."
+    docker pull "${GATEWAY_IMAGE}:${GATEWAY_VERSION}" || {
+      echo "ERROR: Failed to pull Gateway image!" >&2
+      exit 1
+    }
+    
+    echo "==> Pulling Service image: ${SERVICE_IMAGE}:${SERVICE_VERSION} ..."
+    docker pull "${SERVICE_IMAGE}:${SERVICE_VERSION}" || {
+      echo "ERROR: Failed to pull Service image!" >&2
+      exit 1
+    }
+    
+    echo "✅ Images pulled successfully"
+  elif [ "${NEED_BUILD}" = "1" ]; then
     echo "==> Building Keycloak artifacts (providers) ..."
     docker compose build artifacts
     docker compose run --rm artifacts || {

@@ -19,7 +19,7 @@ PHONE_PROVIDER_BRANCH="${PHONE_PROVIDER_BRANCH:-master}"
 
 THEME_REPO_URL="${THEME_REPO_URL:-https://github.com/shivain22/rms-keycloakify-theme.git}"
 THEME_BRANCH="${THEME_BRANCH:-main}"
-THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-all-other-versions.jar}"
+THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}"
 
 # Optional: for private repos / corporate GitHub setups, provide a token.
 # - Pass via compose env: GITHUB_TOKEN=...
