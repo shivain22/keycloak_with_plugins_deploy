@@ -1,12 +1,12 @@
 FROM node:20-bookworm-slim
 
-# Install build dependencies: git, Java 17, Maven
+# Install build dependencies: git, Java 21, Maven
 # Note: Jib doesn't require Docker CLI - it builds images directly
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     ca-certificates \
     git \
-    openjdk-17-jdk-headless \
+    openjdk-21-jdk-headless \
     maven \
     bash \
   && rm -rf /var/lib/apt/lists/*

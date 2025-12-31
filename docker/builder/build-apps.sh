@@ -100,10 +100,23 @@ fi
 
 # Build and push Docker image
 echo "Building and pushing gateway Docker image..."
+# Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
+# Also set compiler properties explicitly
 if [[ -n "${DOCKER_USERNAME}" ]]; then
-  ${MVN_CMD} clean package jib:build -Ddocker.username="${DOCKER_USERNAME}" -Ddocker.password="${DOCKER_PASSWORD}"
+  ${MVN_CMD} clean package jib:build \
+    -Dmaven.compiler.release=21 \
+    -Dmaven.compiler.source=21 \
+    -Dmaven.compiler.target=21 \
+    -Dmaven.compiler-plugin.version=3.13.0 \
+    -Ddocker.username="${DOCKER_USERNAME}" \
+    -Ddocker.password="${DOCKER_PASSWORD}"
 else
-  ${MVN_CMD} clean package jib:build -Ddocker.password="${DOCKER_PASSWORD}"
+  ${MVN_CMD} clean package jib:build \
+    -Dmaven.compiler.release=21 \
+    -Dmaven.compiler.source=21 \
+    -Dmaven.compiler.target=21 \
+    -Dmaven.compiler-plugin.version=3.13.0 \
+    -Ddocker.password="${DOCKER_PASSWORD}"
 fi
 
 if [[ $? -ne 0 ]]; then
@@ -132,10 +145,23 @@ fi
 
 # Build and push Docker image
 echo "Building and pushing service Docker image..."
+# Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
+# Also set compiler properties explicitly
 if [[ -n "${DOCKER_USERNAME}" ]]; then
-  ${MVN_CMD} clean package jib:build -Ddocker.username="${DOCKER_USERNAME}" -Ddocker.password="${DOCKER_PASSWORD}"
+  ${MVN_CMD} clean package jib:build \
+    -Dmaven.compiler.release=21 \
+    -Dmaven.compiler.source=21 \
+    -Dmaven.compiler.target=21 \
+    -Dmaven.compiler-plugin.version=3.13.0 \
+    -Ddocker.username="${DOCKER_USERNAME}" \
+    -Ddocker.password="${DOCKER_PASSWORD}"
 else
-  ${MVN_CMD} clean package jib:build -Ddocker.password="${DOCKER_PASSWORD}"
+  ${MVN_CMD} clean package jib:build \
+    -Dmaven.compiler.release=21 \
+    -Dmaven.compiler.source=21 \
+    -Dmaven.compiler.target=21 \
+    -Dmaven.compiler-plugin.version=3.13.0 \
+    -Ddocker.password="${DOCKER_PASSWORD}"
 fi
 
 if [[ $? -ne 0 ]]; then
