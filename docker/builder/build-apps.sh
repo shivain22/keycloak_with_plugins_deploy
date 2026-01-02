@@ -49,12 +49,14 @@ fi
 echo "Verifying Java 21 installation:"
 echo "JAVA_HOME=${JAVA_HOME}"
 java -version
-mvn -version | head -3
+# Suppress broken pipe errors from Maven version check (happens in non-interactive environments)
+(mvn -version 2>&1 | head -3 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true) || true
 
 # Use a persistent maven repo to reduce flaky downloads / corruption.
 M2_DIR="${M2_DIR:-/m2}"
 mkdir -p "${M2_DIR}/repository"
-export MAVEN_OPTS="${MAVEN_OPTS:-} -Dmaven.repo.local=${M2_DIR}/repository"
+# Disable ANSI colors and jansi to avoid broken pipe errors in non-interactive environments
+export MAVEN_OPTS="${MAVEN_OPTS:-} -Dmaven.repo.local=${M2_DIR}/repository -Dmaven.color=false -Djansi.passthrough=true -Djansi.force=true"
 
 # Also ensure any tool that passes its own -Dmaven.repo.local still ends up using our stable one.
 mkdir -p /work/bin
@@ -120,25 +122,35 @@ fi
 echo "Building and pushing gateway Docker image..."
 # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
 # Also set compiler properties explicitly
+# Filter broken pipe errors from output
+set +e
 if [[ -n "${DOCKER_USERNAME}" ]]; then
   ${MVN_CMD} clean package jib:build \
     -Dmaven.compiler.release=21 \
     -Dmaven.compiler.source=21 \
     -Dmaven.compiler.target=21 \
     -Dmaven.compiler-plugin.version=3.13.0 \
+    -Djansi.passthrough=true \
+    -Dmaven.color=false \
     -Ddocker.username="${DOCKER_USERNAME}" \
-    -Ddocker.password="${DOCKER_PASSWORD}"
+    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+  MVN_EXIT_CODE=${PIPESTATUS[0]}
 else
   ${MVN_CMD} clean package jib:build \
     -Dmaven.compiler.release=21 \
     -Dmaven.compiler.source=21 \
     -Dmaven.compiler.target=21 \
     -Dmaven.compiler-plugin.version=3.13.0 \
-    -Ddocker.password="${DOCKER_PASSWORD}"
+    -Djansi.passthrough=true \
+    -Dmaven.color=false \
+    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+  MVN_EXIT_CODE=${PIPESTATUS[0]}
 fi
+set -e
 
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Gateway build failed!" >&2
+# Check if build actually succeeded (ignore broken pipe errors)
+if [[ $MVN_EXIT_CODE -ne 0 ]]; then
+  echo "ERROR: Gateway build failed (exit code: $MVN_EXIT_CODE)!" >&2
   exit 1
 fi
 
@@ -165,25 +177,35 @@ fi
 echo "Building and pushing service Docker image..."
 # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
 # Also set compiler properties explicitly
+# Filter broken pipe errors from output
+set +e
 if [[ -n "${DOCKER_USERNAME}" ]]; then
   ${MVN_CMD} clean package jib:build \
     -Dmaven.compiler.release=21 \
     -Dmaven.compiler.source=21 \
     -Dmaven.compiler.target=21 \
     -Dmaven.compiler-plugin.version=3.13.0 \
+    -Djansi.passthrough=true \
+    -Dmaven.color=false \
     -Ddocker.username="${DOCKER_USERNAME}" \
-    -Ddocker.password="${DOCKER_PASSWORD}"
+    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+  MVN_EXIT_CODE=${PIPESTATUS[0]}
 else
   ${MVN_CMD} clean package jib:build \
     -Dmaven.compiler.release=21 \
     -Dmaven.compiler.source=21 \
     -Dmaven.compiler.target=21 \
     -Dmaven.compiler-plugin.version=3.13.0 \
-    -Ddocker.password="${DOCKER_PASSWORD}"
+    -Djansi.passthrough=true \
+    -Dmaven.color=false \
+    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+  MVN_EXIT_CODE=${PIPESTATUS[0]}
 fi
+set -e
 
-if [[ $? -ne 0 ]]; then
-  echo "ERROR: Service build failed!" >&2
+# Check if build actually succeeded (ignore broken pipe errors)
+if [[ $MVN_EXIT_CODE -ne 0 ]]; then
+  echo "ERROR: Service build failed (exit code: $MVN_EXIT_CODE)!" >&2
   exit 1
 fi
 
