@@ -108,23 +108,47 @@ echo "=== Building keycloak-phone-provider ==="
 pp_dir="${tmp}/keycloak-phone-provider"
 git_clone "${PHONE_PROVIDER_REPO_URL}" "${PHONE_PROVIDER_BRANCH}" "${pp_dir}"
 pushd "${pp_dir}" >/dev/null
-# Build with Java 21 - override compiler settings if needed
+
+# The project uses maven-compiler-plugin:3.1 which doesn't support Java 21
+# Patch pom.xml to use version 3.13.0 which supports Java 21
+echo "Patching pom.xml to use maven-compiler-plugin 3.13.0 for Java 21 support..."
+# Create backup
+cp pom.xml pom.xml.backup
+
+# Simple sed replacement - replace version 3.1 with 3.13.0 for maven-compiler-plugin
+# This handles the common case where version appears after artifactId
+sed -i '/<artifactId>maven-compiler-plugin<\/artifactId>/,/<version>/s/<version>3\.1<\/version>/<version>3.13.0<\/version>/' pom.xml
+
+# Also try replacing standalone version 3.1 that might be in properties
+sed -i 's/\(<maven\.compiler\.plugin\.version>\)3\.1\(<\/maven\.compiler\.plugin\.version>\)/\13.13.0\2/g' pom.xml 2>/dev/null || true
+
+# Build with Java 21 - override compiler settings
 # Redirect stderr to filter broken pipe errors, but keep stdout for build output
-mvn -B -ntp clean install -DskipTests \
+BUILD_SUCCESS=false
+if mvn -B -ntp clean install -DskipTests \
   -Dmaven.compiler.release=21 \
   -Dmaven.compiler.source=21 \
   -Dmaven.compiler.target=21 \
   -Dmaven.compiler-plugin.version=3.13.0 \
   -Djansi.passthrough=true \
-  -Dmaven.color=false 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || {
-  # Check if build actually succeeded despite the error
-  if [[ -f "target/providers/keycloak-phone-provider.jar" ]]; then
-    echo "WARNING: Maven reported errors but JAR was built successfully (ignoring broken pipe error)"
-  else
-    echo "ERROR: Maven build failed and no JAR was produced" >&2
-    exit 1
-  fi
-}
+  -Dmaven.color=false 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)"; then
+  BUILD_SUCCESS=true
+fi
+
+# Check if JAR was actually built
+if [[ -f "target/providers/keycloak-phone-provider.jar" ]]; then
+  BUILD_SUCCESS=true
+fi
+
+# Restore backup
+mv pom.xml.backup pom.xml
+
+# Check build result
+if [[ "$BUILD_SUCCESS" == "false" ]] || [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
+  echo "ERROR: Maven build failed and no JAR was produced" >&2
+  exit 1
+fi
+
 popd >/dev/null
 
 if [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
