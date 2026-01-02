@@ -94,13 +94,13 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:8083",
-      "rootUrl": "http://localhost:8083",
-      "adminUrl": "http://localhost:8083",
+      "baseUrl": "http://localhost:9294",
+      "rootUrl": "http://localhost:9294",
+      "adminUrl": "http://localhost:9294",
       "attributes": {
         "pkce.code.challenge.method": "",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000"
+        "post.logout.redirect.uris": "http://localhost:9000,https://rmsdashboard.atparui.com"
       },
       "defaultClientScopes": [
         "openid",
@@ -118,11 +118,14 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:8083",
-        "http://localhost:9000"
+        "http://localhost:9294",
+        "http://localhost:9000",
+        "https://rmsservice.atparui.com",
+        "https://rmsdashboard.atparui.com"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc"
+        "http://localhost:9000/login/oauth2/code/oidc",
+        "https://rmsdashboard.atparui.com/login/oauth2/code/oidc"
       ]
     },
     {
@@ -137,13 +140,13 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:8083",
-      "rootUrl": "http://localhost:8083",
-      "adminUrl": "http://localhost:8083",
+      "baseUrl": "http://localhost:9294",
+      "rootUrl": "http://localhost:9294",
+      "adminUrl": "http://localhost:9294",
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000"
+        "post.logout.redirect.uris": "http://localhost:9000,https://rmsdashboard.atparui.com"
       },
       "defaultClientScopes": [
         "openid",
@@ -161,11 +164,14 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:8083",
-        "http://localhost:9000"
+        "http://localhost:9294",
+        "http://localhost:9000",
+        "https://rmsservice.atparui.com",
+        "https://rmsdashboard.atparui.com"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc"
+        "http://localhost:9000/login/oauth2/code/oidc",
+        "https://rmsdashboard.atparui.com/login/oauth2/code/oidc"
       ]
     }
   ],
@@ -347,6 +353,5 @@
     "microprofile-jwt"
   ]
 }
-
 
 

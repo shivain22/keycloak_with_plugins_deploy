@@ -4,7 +4,7 @@ set -euo pipefail
 # One-shot build container that:
 # - cleans /work/providers
 # - clones and builds keycloak-phone-provider (maven)
-# - clones and builds rms-keycloakify-theme (npm/yarn/pnpm + keycloakify which shells out to mvn)
+# - clones and builds rms-auth-theme-plugin (npm + keycloakify which shells out to mvn)
 # - copies required jars into /work/providers
 #
 # Expected volume mounts:
@@ -30,6 +30,11 @@ echo "PROVIDERS_DIR=${PROVIDERS_DIR}"
 echo "PHONE_PROVIDER_REPO_URL=${PHONE_PROVIDER_REPO_URL} (branch=${PHONE_PROVIDER_BRANCH})"
 echo "THEME_REPO_URL=${THEME_REPO_URL} (branch=${THEME_BRANCH})"
 echo "THEME_JAR_NAME=${THEME_JAR_NAME}"
+
+# Verify Java 21 is available
+echo "Verifying Java 21 installation:"
+java -version
+mvn -version | head -3
 
 mkdir -p "${PROVIDERS_DIR}"
 
@@ -85,7 +90,12 @@ echo "=== Building keycloak-phone-provider ==="
 pp_dir="${tmp}/keycloak-phone-provider"
 git_clone "${PHONE_PROVIDER_REPO_URL}" "${PHONE_PROVIDER_BRANCH}" "${pp_dir}"
 pushd "${pp_dir}" >/dev/null
-mvn -B -ntp clean install -DskipTests
+# Build with Java 21 - override compiler settings if needed
+mvn -B -ntp clean install -DskipTests \
+  -Dmaven.compiler.release=21 \
+  -Dmaven.compiler.source=21 \
+  -Dmaven.compiler.target=21 \
+  -Dmaven.compiler-plugin.version=3.13.0
 popd >/dev/null
 
 if [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
@@ -100,60 +110,38 @@ fi
 cp -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" "${PROVIDERS_DIR}/"
 cp -f "${pp_dir}/target/providers/keycloak-phone-provider-msg91.jar" "${PROVIDERS_DIR}/"
 
-echo "=== Building rms-keycloakify-theme (Keycloakify theme) ==="
-theme_dir="${tmp}/rms-keycloakify-theme"
+echo "=== Building rms-auth-theme-plugin (Keycloakify theme) ==="
+echo "Using Java 21 for theme build (keycloakify will use Maven internally)"
+theme_dir="${tmp}/rms-auth-theme-plugin"
 git_clone "${THEME_REPO_URL}" "${THEME_BRANCH}" "${theme_dir}"
 pushd "${theme_dir}" >/dev/null
 
-# Detect and use appropriate package manager
-if [[ -f pnpm-lock.yaml ]] && command -v pnpm >/dev/null 2>&1; then
-  echo "Using pnpm..."
-  pnpm install --no-frozen-lockfile || npm install --no-fund --no-audit
-elif [[ -f yarn.lock ]] && command -v yarn >/dev/null 2>&1; then
-  echo "Using yarn..."
-  yarn install --no-frozen-lockfile || npm install --no-fund --no-audit
-elif [[ -f package-lock.json ]]; then
-  echo "Using npm (package-lock.json found)..."
+if [[ -f package-lock.json ]]; then
   npm ci --no-fund --no-audit
 else
-  echo "Using npm (default)..."
   npm install --no-fund --no-audit
 fi
 
-# Build keycloak theme jars
+# Build keycloak theme jars (keycloakify uses Maven with Java 21)
+# Ensure Maven uses Java 21 compiler settings
+export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
 npm run build-keycloak-theme
 
-# Check if specific theme jar exists, otherwise copy all theme jars
-if [[ -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
-  echo "Found specific theme jar: ${THEME_JAR_NAME}"
-  cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
-else
-  echo "WARNING: Expected theme jar '${THEME_JAR_NAME}' not found. Copying all theme jars..."
-  echo "Available theme jars in dist_keycloak:"
-  ls -1 dist_keycloak/*.jar 2>/dev/null || true
-  
-  # Copy all theme jars (Keycloakify generates multiple jars for different versions)
-  if ls dist_keycloak/*.jar 1> /dev/null 2>&1; then
-    cp -f dist_keycloak/*.jar "${PROVIDERS_DIR}/"
-    echo "✅ Copied all theme jars to providers directory"
-  else
-    echo "ERROR: No theme jars found in dist_keycloak/" >&2
-    exit 1
-  fi
+if [[ ! -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
+  echo "ERROR: Missing theme jar dist_keycloak/${THEME_JAR_NAME}" >&2
+  echo "dist_keycloak contents:" >&2
+  ls -1 dist_keycloak >&2 || true
+  exit 1
 fi
+
+cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
 popd >/dev/null
 
 echo "=== Verifying required files in providers ==="
 ls -1 "${PROVIDERS_DIR}" || true
 test -f "${PROVIDERS_DIR}/keycloak-phone-provider.jar"
 test -f "${PROVIDERS_DIR}/keycloak-phone-provider-msg91.jar"
-
-# Verify at least one theme jar exists (may be different name than expected)
-if ! ls "${PROVIDERS_DIR}"/keycloak-theme-*.jar 1> /dev/null 2>&1; then
-  echo "ERROR: No theme jar found in providers directory" >&2
-  exit 1
-fi
-echo "✅ Theme jar(s) found in providers directory"
+test -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
 
 echo "=== Build container done ==="
 
