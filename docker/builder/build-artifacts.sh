@@ -418,11 +418,19 @@ echo "JAVA_HOME: ${JAVA_HOME}"
 
 # Install dependencies with verbose output
 echo "Installing npm dependencies..."
+echo "=========================================="
 if [[ -f package-lock.json ]]; then
-  npm ci --no-fund --no-audit --verbose 2>&1 | tail -20
+  npm ci --no-fund --no-audit --verbose
 else
-  npm install --no-fund --no-audit --verbose 2>&1 | tail -20
+  npm install --no-fund --no-audit --verbose
 fi
+NPM_INSTALL_EXIT=$?
+echo "=========================================="
+if [[ $NPM_INSTALL_EXIT -ne 0 ]]; then
+  echo "ERROR: npm install failed with exit code $NPM_INSTALL_EXIT!" >&2
+  exit 1
+fi
+echo "✓ npm dependencies installed successfully"
 
 # Verify keycloakify is installed
 if ! npm list keycloakify >/dev/null 2>&1; then
@@ -431,6 +439,70 @@ if ! npm list keycloakify >/dev/null 2>&1; then
 fi
 echo "✓ keycloakify installed: $(npm list keycloakify --depth=0 2>/dev/null | grep keycloakify || echo 'found')"
 
+# Patch vite.config.ts to ensure correct Keycloak version target
+echo "Checking and patching vite.config.ts for Keycloak 26.2+..."
+if [[ -f "vite.config.ts" ]]; then
+  # Backup original
+  cp vite.config.ts vite.config.ts.backup
+  
+  # Check if keycloakVersionTargets is missing or incorrect
+  if ! grep -q "keycloakVersionTargets" vite.config.ts; then
+    echo "Adding keycloakVersionTargets to vite.config.ts..."
+    # Use a more reliable method to add keycloakVersionTargets
+    # Find the keycloakify({ line and add the property after it
+    awk '/keycloakify\({/ {
+      print
+      getline
+      print "            keycloakVersionTargets: [\"26.2\"],"
+      print
+      next
+    }
+    { print }' vite.config.ts > vite.config.ts.tmp && mv vite.config.ts.tmp vite.config.ts
+  elif ! grep -q 'keycloakVersionTargets: \["26.2"\]' vite.config.ts; then
+    echo "Updating keycloakVersionTargets to 26.2..."
+    sed -i 's/keycloakVersionTargets: \[.*\]/keycloakVersionTargets: ["26.2"]/' vite.config.ts
+  fi
+  
+  echo "✓ vite.config.ts patched"
+  echo "Updated vite.config.ts content:"
+  grep -A 3 "keycloakify({" vite.config.ts | head -5
+else
+  echo "WARNING: vite.config.ts not found!" >&2
+fi
+
+# Fix package.json name if it's wrong (keycloakify uses this for theme name)
+echo "Checking package.json name..."
+if [[ -f "package.json" ]]; then
+  PACKAGE_NAME=$(grep -E '"name"' package.json | head -1 | sed 's/.*"name": *"\([^"]*\)".*/\1/')
+  echo "Package name in package.json: ${PACKAGE_NAME}"
+  
+  if [[ "$PACKAGE_NAME" != "rms-auth-theme-plugin" ]]; then
+    echo "Fixing package.json name from '${PACKAGE_NAME}' to 'rms-auth-theme-plugin'..."
+    sed -i "s/\"name\": *\"${PACKAGE_NAME}\"/\"name\": \"rms-auth-theme-plugin\"/" package.json
+    echo "✓ Updated package.json name to rms-auth-theme-plugin"
+    echo "NOTE: Regenerating kc.gen.tsx to reflect new theme name..."
+    # Regenerate kc.gen.tsx if keycloakify CLI is available
+    if command -v npx >/dev/null 2>&1; then
+      npx keycloakify update-kc-gen 2>/dev/null || echo "Could not regenerate kc.gen.tsx (will be regenerated during build)"
+    fi
+  else
+    echo "✓ Package name verified: rms-auth-theme-plugin"
+  fi
+fi
+
+# Verify theme name in kc.gen.tsx matches expected name
+echo "Verifying theme name configuration..."
+if [[ -f "src/kc.gen.tsx" ]]; then
+  if ! grep -q '"rms-auth-theme-plugin"' src/kc.gen.tsx; then
+    echo "WARNING: Theme name in kc.gen.tsx doesn't match 'rms-auth-theme-plugin'!" >&2
+    echo "Current theme name in kc.gen.tsx:"
+    grep -E 'ThemeName|themeNames' src/kc.gen.tsx | head -2
+    echo "This might cause the theme to not appear in Keycloak admin console."
+  else
+    echo "✓ Theme name verified: rms-auth-theme-plugin"
+  fi
+fi
+
 # Note: keycloakify may generate different JAR names based on version detection
 # We'll handle this by using the appropriate JAR that works for Keycloak 26.2+
 
@@ -438,40 +510,46 @@ echo "✓ keycloakify installed: $(npm list keycloakify --depth=0 2>/dev/null | 
 # Ensure Maven uses Java 21 compiler settings
 export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
 
-echo "Building keycloak theme with keycloak-theme..."
+echo "Building keycloak theme with keycloakify..."
 echo "Running: npm run build-keycloak-theme"
 echo "NOTE: keycloakify uses Maven internally - checking for Maven errors..."
+echo "=========================================="
 
-# Run build with output capture - DO NOT filter broken pipe errors here
-# We need to see all errors to diagnose issues
-BUILD_OUTPUT=$(npm run build-keycloak-theme 2>&1)
-BUILD_EXIT_CODE=$?
+# Run build with real-time streaming output
+# Use tee to both stream and capture for error checking
+BUILD_LOG_FILE="/tmp/theme-build.log"
+npm run build-keycloak-theme 2>&1 | tee "$BUILD_LOG_FILE"
+BUILD_EXIT_CODE=${PIPESTATUS[0]}
 
-# Show last 100 lines of build output (more context for Maven errors)
-echo "=== Build Output (last 100 lines) ==="
-echo "$BUILD_OUTPUT" | tail -100
+echo "=========================================="
 
 # Check for Maven errors even if exit code is 0 (keycloakify might not propagate Maven failures)
-if echo "$BUILD_OUTPUT" | grep -qiE "(maven.*error|build.*failed|compilation.*error|BUILD FAILURE)"; then
+if grep -qiE "(maven.*error|build.*failed|compilation.*error|BUILD FAILURE)" "$BUILD_LOG_FILE"; then
   echo "ERROR: Maven build errors detected in output!" >&2
   echo "Maven error details:" >&2
-  echo "$BUILD_OUTPUT" | grep -iE "(error|failed|failure)" | tail -20 >&2
+  grep -iE "(error|failed|failure)" "$BUILD_LOG_FILE" | tail -20 >&2
+  rm -f "$BUILD_LOG_FILE"
   exit 1
 fi
 
 if [[ $BUILD_EXIT_CODE -ne 0 ]]; then
   echo "ERROR: Theme build failed with exit code $BUILD_EXIT_CODE!" >&2
-  echo "Full build output:" >&2
-  echo "$BUILD_OUTPUT" >&2
+  echo "Last 50 lines of build output:" >&2
+  tail -50 "$BUILD_LOG_FILE" >&2
+  rm -f "$BUILD_LOG_FILE"
   exit 1
 fi
 
 # Additional check: Look for keycloakify-specific errors
-if echo "$BUILD_OUTPUT" | grep -qiE "(keycloakify.*error|template.*not.*found|jar.*not.*created)"; then
+if grep -qiE "(keycloakify.*error|template.*not.*found|jar.*not.*created)" "$BUILD_LOG_FILE"; then
   echo "ERROR: keycloakify errors detected!" >&2
-  echo "$BUILD_OUTPUT" | grep -iE "(keycloakify|error|failed)" | tail -20 >&2
+  grep -iE "(keycloakify|error|failed)" "$BUILD_LOG_FILE" | tail -20 >&2
+  rm -f "$BUILD_LOG_FILE"
   exit 1
 fi
+
+# Clean up log file
+rm -f "$BUILD_LOG_FILE"
 
 # Check if dist_keycloak directory was created
 if [[ ! -d "dist_keycloak" ]]; then

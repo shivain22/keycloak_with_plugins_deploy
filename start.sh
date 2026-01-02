@@ -218,6 +218,7 @@ if [ "${USE_RUNTIME}" = "0" ]; then
       echo "  Building phone provider only (preserving theme JAR)"
     fi
     docker compose build artifacts
+    # Run artifacts build - output will stream in real-time
     docker compose run --rm artifacts ${ARTIFACT_BUILD_ARGS} || {
       echo "ERROR: Artifacts build failed!" >&2
       exit 1
