@@ -12,6 +12,10 @@ services:
       THEME_JAR_NAME: ${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}
       # Optional (needed if a repo is private): GitHub token with repo read access
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      # Build selection flags (pass via docker compose run --env or .env file)
+      # BUILD_PHONE_PROVIDER_ONLY=1 - build only phone provider
+      # BUILD_THEME_ONLY=1 - build only theme
+      # BUILD_QUIET=1 - less verbose output
     volumes:
       # Shared output for Keycloak provider/theme jars
       - ./providers:/work/providers

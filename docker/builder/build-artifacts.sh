@@ -10,6 +10,14 @@ set -euo pipefail
 # Expected volume mounts:
 # - /work/providers  -> bind mount to repo ./providers (shared with keycloak)
 # - /m2             -> optional maven cache volume (improves reliability/speed)
+#
+# Usage:
+#   build-artifacts.sh                    # Build all components
+#   build-artifacts.sh --phone-provider    # Build only phone provider
+#   build-artifacts.sh --theme            # Build only theme
+#   build-artifacts.sh --phone-provider --theme  # Build both
+#   build-artifacts.sh --quiet            # Less verbose output
+#   build-artifacts.sh --log-file <file>  # Save logs to file
 
 PROVIDERS_DIR="${PROVIDERS_DIR:-/work/providers}"
 M2_DIR="${M2_DIR:-/m2}"
@@ -25,11 +33,62 @@ THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}"
 # - Pass via compose env: GITHUB_TOKEN=...
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
+# Parse command-line arguments for selective building
+BUILD_PHONE_PROVIDER=true
+BUILD_THEME=true
+QUIET_MODE=false
+LOG_FILE=""
+
+for arg in "$@"; do
+  case "${arg}" in
+    --phone-provider-only|--phone-provider)
+      BUILD_PHONE_PROVIDER=true
+      BUILD_THEME=false
+      ;;
+    --theme-only|--theme)
+      BUILD_PHONE_PROVIDER=false
+      BUILD_THEME=true
+      ;;
+    --quiet)
+      QUIET_MODE=true
+      ;;
+    --log-file=*)
+      LOG_FILE="${arg#*=}"
+      ;;
+    --help|-h)
+      echo "Usage: build-artifacts.sh [options]"
+      echo "Options:"
+      echo "  --phone-provider-only    Build only phone provider"
+      echo "  --theme-only             Build only theme"
+      echo "  --quiet                  Less verbose output"
+      echo "  --log-file=<file>        Save logs to file"
+      echo "  --help                   Show this help"
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: ${arg}" >&2
+      echo "Use --help for usage information" >&2
+      exit 1
+      ;;
+  esac
+done
+
+# Setup log file if specified
+if [[ -n "$LOG_FILE" ]]; then
+  exec > >(tee "$LOG_FILE")
+  exec 2>&1
+fi
+
 echo "=== Build container starting ==="
 echo "PROVIDERS_DIR=${PROVIDERS_DIR}"
-echo "PHONE_PROVIDER_REPO_URL=${PHONE_PROVIDER_REPO_URL} (branch=${PHONE_PROVIDER_BRANCH})"
-echo "THEME_REPO_URL=${THEME_REPO_URL} (branch=${THEME_BRANCH})"
-echo "THEME_JAR_NAME=${THEME_JAR_NAME}"
+if [[ "$BUILD_PHONE_PROVIDER" == "true" ]]; then
+  echo "PHONE_PROVIDER_REPO_URL=${PHONE_PROVIDER_REPO_URL} (branch=${PHONE_PROVIDER_BRANCH})"
+fi
+if [[ "$BUILD_THEME" == "true" ]]; then
+  echo "THEME_REPO_URL=${THEME_REPO_URL} (branch=${THEME_BRANCH})"
+  echo "THEME_JAR_NAME=${THEME_JAR_NAME}"
+fi
+echo "Build components: Phone Provider=${BUILD_PHONE_PROVIDER}, Theme=${BUILD_THEME}"
 
 # Ensure JAVA_HOME is set correctly (in case profile wasn't sourced)
 if [ -z "${JAVA_HOME:-}" ] || [ ! -d "${JAVA_HOME}" ]; then
@@ -52,8 +111,15 @@ java -version
 
 mkdir -p "${PROVIDERS_DIR}"
 
-echo "Cleaning providers dir..."
-rm -rf "${PROVIDERS_DIR:?}/"*
+# Only clean if building everything, otherwise preserve existing JARs
+if [[ "$BUILD_PHONE_PROVIDER" == "true" ]] && [[ "$BUILD_THEME" == "true" ]]; then
+  echo "Cleaning providers dir..."
+  rm -rf "${PROVIDERS_DIR:?}/"*
+else
+  echo "Selective build mode - preserving existing files in providers dir"
+  echo "Existing files:"
+  ls -lh "${PROVIDERS_DIR}"/*.jar 2>/dev/null || echo "  (none)"
+fi
 
 # Use a persistent maven repo to reduce flaky downloads / corruption.
 mkdir -p "${M2_DIR}/repository"
@@ -104,8 +170,9 @@ git_clone() {
   fi
 }
 
-echo "=== Building keycloak-phone-provider ==="
-pp_dir="${tmp}/keycloak-phone-provider"
+if [[ "$BUILD_PHONE_PROVIDER" == "true" ]]; then
+  echo "=== Building keycloak-phone-provider ==="
+  pp_dir="${tmp}/keycloak-phone-provider"
 git_clone "${PHONE_PROVIDER_REPO_URL}" "${PHONE_PROVIDER_BRANCH}" "${pp_dir}"
 pushd "${pp_dir}" >/dev/null
 
@@ -331,8 +398,11 @@ fi
 
 cp -f "$PHONE_PROVIDER_JAR" "${PROVIDERS_DIR}/"
 cp -f "$MSG91_PROVIDER_JAR" "${PROVIDERS_DIR}/"
+echo "✓ Phone provider build completed"
+fi
 
-echo "=== Building rms-auth-theme-plugin (Keycloakify theme) ==="
+if [[ "$BUILD_THEME" == "true" ]]; then
+  echo "=== Building rms-auth-theme-plugin (Keycloakify theme) ==="
 echo "Using Java 21 for theme build (keycloakify will use Maven internally)"
 theme_dir="${tmp}/rms-auth-theme-plugin"
 git_clone "${THEME_REPO_URL}" "${THEME_BRANCH}" "${theme_dir}"
@@ -526,13 +596,23 @@ popd >/dev/null
 
 echo "=== Verifying required files in providers ==="
 ls -lh "${PROVIDERS_DIR}" || true
-test -f "${PROVIDERS_DIR}/keycloak-phone-provider.jar"
-test -f "${PROVIDERS_DIR}/keycloak-phone-provider-msg91.jar"
-test -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
 
-# Final verification: Check theme JAR structure in providers directory
-echo "=== Verifying theme JAR structure in providers ==="
-if [[ -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}" ]]; then
+# Only verify files that were built
+if [[ "$BUILD_PHONE_PROVIDER" == "true" ]]; then
+  test -f "${PROVIDERS_DIR}/keycloak-phone-provider.jar"
+  test -f "${PROVIDERS_DIR}/keycloak-phone-provider-msg91.jar"
+  echo "✓ Phone provider JARs verified"
+fi
+
+if [[ "$BUILD_THEME" == "true" ]]; then
+  test -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
+  echo "✓ Theme JAR verified"
+fi
+
+# Final verification: Check theme JAR structure in providers directory (only if theme was built)
+if [[ "$BUILD_THEME" == "true" ]]; then
+  echo "=== Verifying theme JAR structure in providers ==="
+  if [[ -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}" ]]; then
   FINAL_SIZE=$(stat -f%z "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || stat -c%s "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || echo "unknown")
   echo "Theme JAR size: ${FINAL_SIZE} bytes"
   
@@ -551,17 +631,18 @@ if [[ -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}" ]]; then
     exit 1
   fi
   
-  if jar -tf "${PROVIDERS_DIR}/${THEME_JAR_NAME}" | grep -q "login.ftl"; then
-    echo "✓ JAR contains login.ftl template"
+    if jar -tf "${PROVIDERS_DIR}/${THEME_JAR_NAME}" | grep -q "login.ftl"; then
+      echo "✓ JAR contains login.ftl template"
+    else
+      echo "ERROR: JAR missing login.ftl template!" >&2
+      exit 1
+    fi
+    
+    echo "✓ Theme JAR verification passed"
   else
-    echo "ERROR: JAR missing login.ftl template!" >&2
+    echo "ERROR: Theme JAR not found in providers directory!" >&2
     exit 1
   fi
-  
-  echo "✓ Theme JAR verification passed"
-else
-  echo "ERROR: Theme JAR not found in providers directory!" >&2
-  exit 1
 fi
 
 echo "=== Build container done ==="

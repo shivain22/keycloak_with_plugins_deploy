@@ -3,14 +3,18 @@ set -euo pipefail
 
 # Smart startup script with build detection
 # Usage:
-#   ./start.sh              # Auto-detect if build is needed
-#   ./start.sh --build      # Force build
-#   ./start.sh --no-build   # Skip build, just start services
-#   ./start.sh --pull       # Pull latest images from Docker Hub (instead of building)
-#   ./start.sh --runtime    # Use runtime compose (no builders)
-#   ./start.sh --logs       # Tail logs after start
-#   ./start.sh --clean      # Remove volumes (useful when postgres version changes)
-#   ./start.sh --setup-env  # Run setup-env.sh to create/update .env file
+#   ./start.sh                      # Auto-detect if build is needed
+#   ./start.sh --build              # Force build
+#   ./start.sh --no-build           # Skip build, just start services
+#   ./start.sh --pull               # Pull latest images from Docker Hub (instead of building)
+#   ./start.sh --runtime            # Use runtime compose (no builders)
+#   ./start.sh --logs               # Tail logs after start
+#   ./start.sh --clean              # Remove volumes (useful when postgres version changes)
+#   ./start.sh --setup-env          # Run setup-env.sh to create/update .env file
+#   ./start.sh --theme-only         # Build only theme (preserves phone provider JARs)
+#   ./start.sh --phone-provider-only # Build only phone provider (preserves theme JAR)
+#   ./start.sh --quiet-build        # Less verbose build output
+#   ./start.sh --help               # Show full help
 
 # Ensure script is run with bash
 if [ -z "${BASH_VERSION:-}" ]; then
@@ -34,6 +38,9 @@ TAIL_LOGS=0
 USE_RUNTIME=0
 CLEAN_VOLUMES=0
 SETUP_ENV=0
+BUILD_THEME_ONLY=0
+BUILD_PHONE_PROVIDER_ONLY=0
+ARTIFACT_BUILD_ARGS=""
 
 for arg in "$@"; do
   case "${arg}" in
@@ -44,7 +51,33 @@ for arg in "$@"; do
     --runtime) USE_RUNTIME=1 ;;
     --clean) CLEAN_VOLUMES=1 ;;
     --setup-env) SETUP_ENV=1 ;;
-    *) echo "Unknown arg: ${arg}" >&2; exit 2 ;;
+    --theme-only) BUILD_THEME_ONLY=1; ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --theme-only" ;;
+    --phone-provider-only) BUILD_PHONE_PROVIDER_ONLY=1; ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --phone-provider-only" ;;
+    --quiet-build) ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --quiet" ;;
+    --help|-h)
+      echo "Usage: $0 [options]"
+      echo ""
+      echo "Build options:"
+      echo "  --build              Force build of all components"
+      echo "  --no-build           Skip build, just start services"
+      echo "  --pull               Pull images from Docker Hub instead of building"
+      echo "  --theme-only         Build only theme (preserves phone provider JARs)"
+      echo "  --phone-provider-only Build only phone provider (preserves theme JAR)"
+      echo "  --quiet-build        Less verbose build output"
+      echo ""
+      echo "Service options:"
+      echo "  --runtime            Use runtime compose (no builders)"
+      echo "  --clean              Remove volumes (deletes database data)"
+      echo "  --setup-env          Run setup-env.sh interactively"
+      echo "  --logs               Tail logs after start"
+      echo ""
+      echo "Examples:"
+      echo "  $0 --theme-only              # Build only theme and start"
+      echo "  $0 --phone-provider-only     # Build only phone provider and start"
+      echo "  $0 --build --theme-only      # Force build, theme only"
+      exit 0
+      ;;
+    *) echo "Unknown arg: ${arg}" >&2; echo "Use --help for usage information" >&2; exit 2 ;;
   esac
 done
 
@@ -179,8 +212,13 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     echo "✅ Images pulled successfully"
   elif [ "${NEED_BUILD}" = "1" ]; then
     echo "==> Building Keycloak artifacts (providers) ..."
+    if [ "${BUILD_THEME_ONLY}" = "1" ]; then
+      echo "  Building theme only (preserving phone provider JARs)"
+    elif [ "${BUILD_PHONE_PROVIDER_ONLY}" = "1" ]; then
+      echo "  Building phone provider only (preserving theme JAR)"
+    fi
     docker compose build artifacts
-    docker compose run --rm artifacts || {
+    docker compose run --rm artifacts ${ARTIFACT_BUILD_ARGS} || {
       echo "ERROR: Artifacts build failed!" >&2
       exit 1
     }
