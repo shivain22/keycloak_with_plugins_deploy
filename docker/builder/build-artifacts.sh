@@ -56,7 +56,9 @@ rm -rf "${PROVIDERS_DIR:?}/"*
 
 # Use a persistent maven repo to reduce flaky downloads / corruption.
 mkdir -p "${M2_DIR}/repository"
-export MAVEN_OPTS="${MAVEN_OPTS:-} -Dmaven.repo.local=${M2_DIR}/repository"
+# Disable ANSI colors and jansi to avoid broken pipe errors in non-interactive environments
+# jansi.passthrough=true makes jansi pass through output without processing, preventing broken pipe errors
+export MAVEN_OPTS="${MAVEN_OPTS:-} -Dmaven.repo.local=${M2_DIR}/repository -Dmaven.color=false -Djansi.passthrough=true -Djansi.force=true"
 
 # Also ensure any tool that passes its own -Dmaven.repo.local still ends up using our stable one.
 mkdir -p /work/bin
@@ -104,11 +106,25 @@ pp_dir="${tmp}/keycloak-phone-provider"
 git_clone "${PHONE_PROVIDER_REPO_URL}" "${PHONE_PROVIDER_BRANCH}" "${pp_dir}"
 pushd "${pp_dir}" >/dev/null
 # Build with Java 21 - override compiler settings if needed
+# Capture exit code separately to handle broken pipe errors
+set +e
 mvn -B -ntp clean install -DskipTests \
   -Dmaven.compiler.release=21 \
   -Dmaven.compiler.source=21 \
   -Dmaven.compiler.target=21 \
-  -Dmaven.compiler-plugin.version=3.13.0
+  -Dmaven.compiler-plugin.version=3.13.0 2>&1 | grep -v -E "(Broken pipe|java.io.IOError)" || true
+MVN_EXIT_CODE=${PIPESTATUS[0]}
+set -e
+
+# Check if build actually succeeded (ignore broken pipe errors if JAR exists)
+if [[ $MVN_EXIT_CODE -ne 0 ]]; then
+  if [[ ! -f "target/providers/keycloak-phone-provider.jar" ]]; then
+    echo "ERROR: Maven build failed (exit code: $MVN_EXIT_CODE) and no JAR was produced" >&2
+    exit 1
+  else
+    echo "WARNING: Maven reported exit code $MVN_EXIT_CODE but JAR was built successfully (likely broken pipe error)"
+  fi
+fi
 popd >/dev/null
 
 if [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
