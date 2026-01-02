@@ -439,33 +439,19 @@ if ! npm list keycloakify >/dev/null 2>&1; then
 fi
 echo "✓ keycloakify installed: $(npm list keycloakify --depth=0 2>/dev/null | grep keycloakify || echo 'found')"
 
-# Patch vite.config.ts to ensure correct Keycloak version target
-echo "Checking and patching vite.config.ts for Keycloak 26.2+..."
+# Note: We don't patch vite.config.ts anymore
+# The GitHub repo should have the correct configuration
+# If keycloakVersionTargets is needed, it should be in the repo
+# Adding it programmatically causes keycloakify errors
+echo "Checking vite.config.ts configuration..."
 if [[ -f "vite.config.ts" ]]; then
-  # Backup original
-  cp vite.config.ts vite.config.ts.backup
-  
-  # Check if keycloakVersionTargets is missing or incorrect
-  if ! grep -q "keycloakVersionTargets" vite.config.ts; then
-    echo "Adding keycloakVersionTargets to vite.config.ts..."
-    # Use a more reliable method to add keycloakVersionTargets
-    # Find the keycloakify({ line and add the property after it
-    awk '/keycloakify\({/ {
-      print
-      getline
-      print "            keycloakVersionTargets: [\"26.2\"],"
-      print
-      next
-    }
-    { print }' vite.config.ts > vite.config.ts.tmp && mv vite.config.ts.tmp vite.config.ts
-  elif ! grep -q 'keycloakVersionTargets: \["26.2"\]' vite.config.ts; then
-    echo "Updating keycloakVersionTargets to 26.2..."
-    sed -i 's/keycloakVersionTargets: \[.*\]/keycloakVersionTargets: ["26.2"]/' vite.config.ts
+  echo "vite.config.ts content:"
+  grep -A 5 "keycloakify({" vite.config.ts | head -8
+  if grep -q "keycloakVersionTargets" vite.config.ts; then
+    echo "✓ keycloakVersionTargets found in vite.config.ts"
+  else
+    echo "NOTE: keycloakVersionTargets not specified - keycloakify will auto-detect"
   fi
-  
-  echo "✓ vite.config.ts patched"
-  echo "Updated vite.config.ts content:"
-  grep -A 3 "keycloakify({" vite.config.ts | head -5
 else
   echo "WARNING: vite.config.ts not found!" >&2
 fi
@@ -557,14 +543,9 @@ if [[ ! -d "dist_keycloak" ]]; then
   exit 1
 fi
 
-echo "✓ Build completed successfully"
+      echo "✓ Build completed successfully"
 
-# Restore vite.config.ts if we patched it
-if [[ -f "vite.config.ts.backup" ]]; then
-  mv vite.config.ts.backup vite.config.ts
-fi
-
-# Check what JARs were generated
+      # Check what JARs were generated
 echo "=== Checking generated JARs ==="
 echo "Contents of dist_keycloak directory:"
 ls -lah dist_keycloak/ 2>/dev/null || {
