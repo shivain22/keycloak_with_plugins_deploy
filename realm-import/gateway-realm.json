@@ -12,6 +12,10 @@
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
+  "loginTheme": "rms-auth-theme-plugin",
+  "accountTheme": "rms-auth-theme-plugin",
+  "adminTheme": "rms-auth-theme-plugin",
+  "emailTheme": "rms-auth-theme-plugin",
   "roles": {
     "realm": [
       {
@@ -383,7 +387,79 @@
     "address",
     "phone",
     "microprofile-jwt"
-  ]
+  ],
+  "authenticationFlows": [
+    {
+      "alias": "browser with phone auto registration",
+      "description": "Browser flow with Phone Username Password Form with Auto Registration",
+      "providerId": "basic-flow",
+      "topLevel": true,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-cookie",
+          "requirement": "ALTERNATIVE",
+          "priority": 10,
+          "authenticationFlow": false
+        },
+        {
+          "authenticator": "identity-provider-redirector",
+          "requirement": "ALTERNATIVE",
+          "priority": 20,
+          "authenticationFlow": false,
+          "userSetupAllowed": false
+        },
+        {
+          "authenticatorFlow": true,
+          "requirement": "ALTERNATIVE",
+          "priority": 30,
+          "flowAlias": "forms"
+        }
+      ]
+    },
+    {
+      "alias": "forms",
+      "description": "Forms sub-flow",
+      "providerId": "basic-flow",
+      "topLevel": false,
+      "builtIn": false,
+      "authenticationExecutions": [
+        {
+          "authenticator": "auth-phone-auto-reg-form",
+          "requirement": "REQUIRED",
+          "priority": 10,
+          "authenticationFlow": false,
+          "userSetupAllowed": false,
+          "authenticationConfig": {
+            "alias": "phone-auto-reg-config",
+            "config": {
+              "enableAutoRegistration": "true",
+              "autoRegPhoneAsUsername": "true",
+              "loginWithPhoneVerify": "true",
+              "loginWithPhoneNumber": "true"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "authenticatorConfig": [
+    {
+      "alias": "phone-auto-reg-config",
+      "config": {
+        "enableAutoRegistration": "true",
+        "autoRegPhoneAsUsername": "true",
+        "loginWithPhoneVerify": "true",
+        "loginWithPhoneNumber": "true"
+      }
+    }
+  ],
+  "browserFlow": "browser with phone auto registration",
+  "registrationFlow": "registration",
+  "directGrantFlow": "direct grant",
+  "resetCredentialsFlow": "reset credentials",
+  "clientAuthenticationFlow": "clients",
+  "dockerAuthenticationFlow": "docker auth"
 }
 
 
