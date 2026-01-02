@@ -338,19 +338,6 @@ theme_dir="${tmp}/rms-auth-theme-plugin"
 git_clone "${THEME_REPO_URL}" "${THEME_BRANCH}" "${theme_dir}"
 pushd "${theme_dir}" >/dev/null
 
-if [[ -f package-lock.json ]]; then
-  npm ci --no-fund --no-audit
-else
-  npm install --no-fund --no-audit
-fi
-
-# Note: keycloakify may generate different JAR names based on version detection
-# We'll handle this by using the appropriate JAR that works for Keycloak 26.2+
-
-# Build keycloak theme jars (keycloakify uses Maven with Java 21)
-# Ensure Maven uses Java 21 compiler settings
-export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
-
 # Verify Node and npm versions
 echo "Node version: $(node --version)"
 echo "npm version: $(npm --version)"
@@ -359,11 +346,53 @@ echo "npm version: $(npm --version)"
 echo "Java version: $(java -version 2>&1 | head -1)"
 echo "JAVA_HOME: ${JAVA_HOME}"
 
-echo "Building keycloak theme with keycloakify..."
-if ! npm run build-keycloak-theme; then
-  echo "ERROR: Theme build failed!" >&2
+# Install dependencies with verbose output
+echo "Installing npm dependencies..."
+if [[ -f package-lock.json ]]; then
+  npm ci --no-fund --no-audit --verbose 2>&1 | tail -20
+else
+  npm install --no-fund --no-audit --verbose 2>&1 | tail -20
+fi
+
+# Verify keycloakify is installed
+if ! npm list keycloakify >/dev/null 2>&1; then
+  echo "ERROR: keycloakify not found in dependencies!" >&2
   exit 1
 fi
+echo "✓ keycloakify installed: $(npm list keycloakify --depth=0 2>/dev/null | grep keycloakify || echo 'found')"
+
+# Note: keycloakify may generate different JAR names based on version detection
+# We'll handle this by using the appropriate JAR that works for Keycloak 26.2+
+
+# Build keycloak theme jars (keycloakify uses Maven with Java 21)
+# Ensure Maven uses Java 21 compiler settings
+export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
+
+echo "Building keycloak theme with keycloakify..."
+echo "Running: npm run build-keycloak-theme"
+
+# Run build with output capture to check for errors
+BUILD_OUTPUT=$(npm run build-keycloak-theme 2>&1)
+BUILD_EXIT_CODE=$?
+
+# Show last 50 lines of build output
+echo "=== Build Output (last 50 lines) ==="
+echo "$BUILD_OUTPUT" | tail -50
+
+if [[ $BUILD_EXIT_CODE -ne 0 ]]; then
+  echo "ERROR: Theme build failed with exit code $BUILD_EXIT_CODE!" >&2
+  echo "Full build output:" >&2
+  echo "$BUILD_OUTPUT" >&2
+  exit 1
+fi
+
+# Check if dist_keycloak directory was created
+if [[ ! -d "dist_keycloak" ]]; then
+  echo "ERROR: dist_keycloak directory not created after build!" >&2
+  exit 1
+fi
+
+echo "✓ Build completed successfully"
 
 # Restore vite.config.ts if we patched it
 if [[ -f "vite.config.ts.backup" ]]; then
@@ -371,9 +400,18 @@ if [[ -f "vite.config.ts.backup" ]]; then
 fi
 
 # Check what JARs were generated
-echo "Generated theme JARs in dist_keycloak:"
+echo "=== Checking generated JARs ==="
+echo "Contents of dist_keycloak directory:"
+ls -lah dist_keycloak/ 2>/dev/null || {
+  echo "ERROR: dist_keycloak directory is empty or doesn't exist!" >&2
+  exit 1
+}
+
+echo "Generated theme JARs:"
 ls -lh dist_keycloak/*.jar 2>/dev/null || {
   echo "ERROR: No JAR files found in dist_keycloak/" >&2
+  echo "Directory contents:" >&2
+  ls -la dist_keycloak/ >&2
   exit 1
 }
 
