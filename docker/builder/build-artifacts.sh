@@ -110,17 +110,66 @@ git_clone "${PHONE_PROVIDER_REPO_URL}" "${PHONE_PROVIDER_BRANCH}" "${pp_dir}"
 pushd "${pp_dir}" >/dev/null
 
 # The project uses maven-compiler-plugin:3.1 which doesn't support Java 21
-# Patch pom.xml to use version 3.13.0 which supports Java 21
-echo "Patching pom.xml to use maven-compiler-plugin 3.13.0 for Java 21 support..."
-# Create backup
-cp pom.xml pom.xml.backup
+# This is a multi-module project, so we need to patch the parent pom.xml
+echo "Patching pom.xml files to use maven-compiler-plugin 3.13.0 for Java 21 support..."
 
-# Simple sed replacement - replace version 3.1 with 3.13.0 for maven-compiler-plugin
-# This handles the common case where version appears after artifactId
-sed -i '/<artifactId>maven-compiler-plugin<\/artifactId>/,/<version>/s/<version>3\.1<\/version>/<version>3.13.0<\/version>/' pom.xml
+# Patch parent pom.xml
+if [[ -f "pom.xml" ]]; then
+  cp pom.xml pom.xml.backup
+  echo "Patching parent pom.xml..."
+  
+  # Update Java version properties (handle various formats)
+  sed -i 's/<maven\.compiler\.source>17<\/maven\.compiler\.source>/<maven.compiler.release>21<\/maven.compiler.release>\n        <maven.compiler.source>21<\/maven.compiler.source>/g' pom.xml
+  sed -i 's/<maven\.compiler\.target>17<\/maven\.compiler\.target>/<maven.compiler.target>21<\/maven.compiler.target>/g' pom.xml
+  sed -i 's/<java\.version>17<\/java\.version>/<java.version>21<\/java.version>/g' pom.xml
+  
+  # Add or update maven-compiler-plugin version property
+  if ! grep -q "maven.compiler-plugin.version" pom.xml; then
+    # Insert after java.version property
+    sed -i '/<java\.version>/a\        <maven.compiler-plugin.version>3.13.0<\/maven.compiler-plugin.version>' pom.xml
+  else
+    sed -i 's/\(<maven\.compiler\.plugin\.version>\)[0-9.]\+\(<\/maven\.compiler\.plugin\.version>\)/\13.13.0\2/g' pom.xml
+  fi
+  
+  # Replace any maven-compiler-plugin version 3.1 with 3.13.0
+  # Handle both pluginManagement and direct plugin declarations
+  # First, try to find and replace in the context of maven-compiler-plugin
+  sed -i '/<artifactId>maven-compiler-plugin<\/artifactId>/,/<version>/s/<version>3\.1<\/version>/<version>3.13.0<\/version>/' pom.xml
+  
+  # Also replace any standalone version 3.1 (more aggressive, but should be safe)
+  # Only replace if it's in a plugin section with maven-compiler-plugin
+  sed -i 's/\(<artifactId>maven-compiler-plugin<\/artifactId>.*<version>\)3\.1\(<\/version>\)/\13.13.0\2/g' pom.xml
+  
+  # Ensure maven-compiler-plugin is explicitly configured in build/plugins section
+  # This overrides any version from parent POMs
+  if ! grep -A 10 "<build>" pom.xml | grep -q "maven-compiler-plugin"; then
+    echo "Adding maven-compiler-plugin to build/plugins section..."
+    # Insert after <plugins> tag in <build> section
+    sed -i '/<build>/,/<\/build>/{
+      /<plugins>/a\
+            <plugin>\
+                <groupId>org.apache.maven.plugins</groupId>\
+                <artifactId>maven-compiler-plugin</artifactId>\
+                <version>3.13.0</version>\
+                <configuration>\
+                    <release>21</release>\
+                </configuration>\
+            </plugin>
+    }' pom.xml
+  fi
+  
+  echo "Parent pom.xml patched"
+fi
 
-# Also try replacing standalone version 3.1 that might be in properties
-sed -i 's/\(<maven\.compiler\.plugin\.version>\)3\.1\(<\/maven\.compiler\.plugin\.version>\)/\13.13.0\2/g' pom.xml 2>/dev/null || true
+# Patch child module pom.xml files
+for child_pom in keycloak-phone-provider/pom.xml keycloak-phone-provider-msg91/pom.xml; do
+  if [[ -f "$child_pom" ]]; then
+    cp "$child_pom" "${child_pom}.backup"
+    # Update Java version properties in child modules
+    sed -i 's/<maven\.compiler\.source>17<\/maven\.compiler\.source>/<maven.compiler.release>21<\/maven.compiler.release>\n        <maven.compiler.source>21<\/maven.compiler.source>/g' "$child_pom"
+    sed -i 's/<maven\.compiler\.target>17<\/maven\.compiler\.target>/<maven.compiler.target>21<\/maven.compiler.target>/g' "$child_pom"
+  fi
+done
 
 # Build with Java 21 - override compiler settings
 # Redirect stderr to filter broken pipe errors, but keep stdout for build output
@@ -135,33 +184,66 @@ if mvn -B -ntp clean install -DskipTests \
   BUILD_SUCCESS=true
 fi
 
-# Check if JAR was actually built
-if [[ -f "target/providers/keycloak-phone-provider.jar" ]]; then
+# Check if JAR was actually built (check in the module directory)
+if [[ -f "keycloak-phone-provider/target/providers/keycloak-phone-provider.jar" ]] || [[ -f "target/providers/keycloak-phone-provider.jar" ]]; then
   BUILD_SUCCESS=true
 fi
 
-# Restore backup
-mv pom.xml.backup pom.xml
+# Restore backups
+if [[ -f "pom.xml.backup" ]]; then
+  mv pom.xml.backup pom.xml
+fi
+for child_pom in keycloak-phone-provider/pom.xml keycloak-phone-provider-msg91/pom.xml; do
+  if [[ -f "${child_pom}.backup" ]]; then
+    mv "${child_pom}.backup" "$child_pom"
+  fi
+done
 
 # Check build result
-if [[ "$BUILD_SUCCESS" == "false" ]] || [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
-  echo "ERROR: Maven build failed and no JAR was produced" >&2
-  exit 1
+if [[ "$BUILD_SUCCESS" == "false" ]]; then
+  # Check for JAR in both possible locations
+  if [[ ! -f "keycloak-phone-provider/target/providers/keycloak-phone-provider.jar" ]] && [[ ! -f "target/providers/keycloak-phone-provider.jar" ]]; then
+    echo "ERROR: Maven build failed and no JAR was produced" >&2
+    exit 1
+  fi
 fi
 
 popd >/dev/null
 
-if [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
-  echo "ERROR: Missing keycloak-phone-provider.jar in ${pp_dir}/target/providers" >&2
-  exit 1
+# Check for JARs in possible locations (multi-module project structure)
+PHONE_PROVIDER_JAR=""
+MSG91_PROVIDER_JAR=""
+
+if [[ -f "${pp_dir}/keycloak-phone-provider/target/providers/keycloak-phone-provider.jar" ]]; then
+  PHONE_PROVIDER_JAR="${pp_dir}/keycloak-phone-provider/target/providers/keycloak-phone-provider.jar"
+elif [[ -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" ]]; then
+  PHONE_PROVIDER_JAR="${pp_dir}/target/providers/keycloak-phone-provider.jar"
 fi
-if [[ ! -f "${pp_dir}/target/providers/keycloak-phone-provider-msg91.jar" ]]; then
-  echo "ERROR: Missing keycloak-phone-provider-msg91.jar in ${pp_dir}/target/providers" >&2
+
+if [[ -f "${pp_dir}/keycloak-phone-provider-msg91/target/providers/keycloak-phone-provider-msg91.jar" ]]; then
+  MSG91_PROVIDER_JAR="${pp_dir}/keycloak-phone-provider-msg91/target/providers/keycloak-phone-provider-msg91.jar"
+elif [[ -f "${pp_dir}/target/providers/keycloak-phone-provider-msg91.jar" ]]; then
+  MSG91_PROVIDER_JAR="${pp_dir}/target/providers/keycloak-phone-provider-msg91.jar"
+fi
+
+if [[ -z "$PHONE_PROVIDER_JAR" ]] || [[ ! -f "$PHONE_PROVIDER_JAR" ]]; then
+  echo "ERROR: Missing keycloak-phone-provider.jar" >&2
+  echo "Searched in:" >&2
+  echo "  ${pp_dir}/keycloak-phone-provider/target/providers/" >&2
+  echo "  ${pp_dir}/target/providers/" >&2
   exit 1
 fi
 
-cp -f "${pp_dir}/target/providers/keycloak-phone-provider.jar" "${PROVIDERS_DIR}/"
-cp -f "${pp_dir}/target/providers/keycloak-phone-provider-msg91.jar" "${PROVIDERS_DIR}/"
+if [[ -z "$MSG91_PROVIDER_JAR" ]] || [[ ! -f "$MSG91_PROVIDER_JAR" ]]; then
+  echo "ERROR: Missing keycloak-phone-provider-msg91.jar" >&2
+  echo "Searched in:" >&2
+  echo "  ${pp_dir}/keycloak-phone-provider-msg91/target/providers/" >&2
+  echo "  ${pp_dir}/target/providers/" >&2
+  exit 1
+fi
+
+cp -f "$PHONE_PROVIDER_JAR" "${PROVIDERS_DIR}/"
+cp -f "$MSG91_PROVIDER_JAR" "${PROVIDERS_DIR}/"
 
 echo "=== Building rms-auth-theme-plugin (Keycloakify theme) ==="
 echo "Using Java 21 for theme build (keycloakify will use Maven internally)"
