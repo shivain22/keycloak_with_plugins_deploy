@@ -593,6 +593,7 @@ else
   fi
 fi
 popd >/dev/null
+fi
 
 echo "=== Verifying required files in providers ==="
 ls -lh "${PROVIDERS_DIR}" || true
