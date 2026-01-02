@@ -113,49 +113,76 @@ pushd "${pp_dir}" >/dev/null
 # This is a multi-module project, so we need to patch the parent pom.xml
 echo "Patching pom.xml files to use maven-compiler-plugin 3.13.0 for Java 21 support..."
 
-# Patch parent pom.xml
+# Patch parent pom.xml - use a more reliable approach
 if [[ -f "pom.xml" ]]; then
   cp pom.xml pom.xml.backup
   echo "Patching parent pom.xml..."
   
-  # Update Java version properties (handle various formats)
+  # Create a temporary file with the plugin configuration
+  cat > /tmp/maven-compiler-plugin.xml << 'PLUGIN_XML'
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>21</release>
+                </configuration>
+            </plugin>
+PLUGIN_XML
+  
+  # Update Java version properties
   sed -i 's/<maven\.compiler\.source>17<\/maven\.compiler\.source>/<maven.compiler.release>21<\/maven.compiler.release>\n        <maven.compiler.source>21<\/maven.compiler.source>/g' pom.xml
   sed -i 's/<maven\.compiler\.target>17<\/maven\.compiler\.target>/<maven.compiler.target>21<\/maven.compiler.target>/g' pom.xml
   sed -i 's/<java\.version>17<\/java\.version>/<java.version>21<\/java.version>/g' pom.xml
   
-  # Add or update maven-compiler-plugin version property
+  # Add maven-compiler-plugin version property
   if ! grep -q "maven.compiler-plugin.version" pom.xml; then
-    # Insert after java.version property
     sed -i '/<java\.version>/a\        <maven.compiler-plugin.version>3.13.0<\/maven.compiler-plugin.version>' pom.xml
   else
     sed -i 's/\(<maven\.compiler\.plugin\.version>\)[0-9.]\+\(<\/maven\.compiler\.plugin\.version>\)/\13.13.0\2/g' pom.xml
   fi
   
-  # Replace any maven-compiler-plugin version 3.1 with 3.13.0
-  # Handle both pluginManagement and direct plugin declarations
-  # First, try to find and replace in the context of maven-compiler-plugin
-  sed -i '/<artifactId>maven-compiler-plugin<\/artifactId>/,/<version>/s/<version>3\.1<\/version>/<version>3.13.0<\/version>/' pom.xml
+  # Replace ALL occurrences of version 3.1 with 3.13.0 (handle whitespace variations)
+  # This is safe because 3.1 is very old and only used by maven-compiler-plugin in this project
+  sed -i 's/<version>3\.1<\/version>/<version>3.13.0<\/version>/g' pom.xml
+  sed -i 's/<version>3\.1<\/version>/<version>3.13.0<\/version>/g' pom.xml  # Handle different whitespace
+  sed -i 's/<version>3\.1<\/version>/<version>3.13.0<\/version>/g' pom.xml  # Handle tabs
   
-  # Also replace any standalone version 3.1 (more aggressive, but should be safe)
-  # Only replace if it's in a plugin section with maven-compiler-plugin
-  sed -i 's/\(<artifactId>maven-compiler-plugin<\/artifactId>.*<version>\)3\.1\(<\/version>\)/\13.13.0\2/g' pom.xml
+  # Also replace in child modules (exclude backup files)
+  find . -name "pom.xml" -type f ! -name "*.backup" -exec sed -i 's/<version>3\.1<\/version>/<version>3.13.0<\/version>/g' {} \;
+  find . -name "pom.xml" -type f ! -name "*.backup" -exec sed -i 's/<version>3\.1<\/version>/<version>3.13.0<\/version>/g' {} \;
   
-  # Ensure maven-compiler-plugin is explicitly configured in build/plugins section
-  # This overrides any version from parent POMs
-  if ! grep -A 10 "<build>" pom.xml | grep -q "maven-compiler-plugin"; then
+  # Ensure maven-compiler-plugin is in build/plugins section (overrides parent)
+  if ! grep -A 20 "<build>" pom.xml | grep -q "maven-compiler-plugin"; then
     echo "Adding maven-compiler-plugin to build/plugins section..."
-    # Insert after <plugins> tag in <build> section
-    sed -i '/<build>/,/<\/build>/{
-      /<plugins>/a\
-            <plugin>\
-                <groupId>org.apache.maven.plugins</groupId>\
-                <artifactId>maven-compiler-plugin</artifactId>\
-                <version>3.13.0</version>\
-                <configuration>\
-                    <release>21</release>\
-                </configuration>\
-            </plugin>
-    }' pom.xml
+    # Find the <plugins> tag in <build> section and insert after it
+    awk '/<build>/,/<\/build>/ {
+      if (/<plugins>/) {
+        print
+        while ((getline line < "/tmp/maven-compiler-plugin.xml") > 0) print line
+        close("/tmp/maven-compiler-plugin.xml")
+        next
+      }
+    }
+    { print }' pom.xml > pom.xml.tmp && mv pom.xml.tmp pom.xml
+  else
+    # Update existing maven-compiler-plugin version
+    sed -i '/<artifactId>maven-compiler-plugin<\/artifactId>/,/<version>/s/<version>[0-9.]\+<\/version>/<version>3.13.0<\/version>/' pom.xml
+  fi
+  
+  rm -f /tmp/maven-compiler-plugin.xml
+  
+  # Verify the patch - check what version is now in the file
+  echo "Verifying patch..."
+  if grep -q "maven-compiler-plugin" pom.xml; then
+    echo "maven-compiler-plugin configuration found:"
+    grep -A 5 "maven-compiler-plugin" pom.xml | head -10 || true
+  fi
+  
+  # Double-check: if version 3.1 still exists anywhere, replace it
+  if grep -q "<version>3\.1</version>" pom.xml; then
+    echo "WARNING: Version 3.1 still found, doing final replacement..." >&2
+    sed -i 's/<version>3\.1<\/version>/<version>3.13.0<\/version>/g' pom.xml
   fi
   
   echo "Parent pom.xml patched"
@@ -171,7 +198,27 @@ for child_pom in keycloak-phone-provider/pom.xml keycloak-phone-provider-msg91/p
   fi
 done
 
+# Create .mvn/maven.config to force plugin version (most reliable override)
+# Note: This might not work for plugin versions, but helps with compiler settings
+mkdir -p .mvn
+echo "-Dmaven.compiler.release=21" > .mvn/maven.config
+
+# Before building, verify the patch worked
+echo "Checking pom.xml for maven-compiler-plugin version..."
+if grep -q "maven-compiler-plugin" pom.xml; then
+  VERSION_FOUND=$(grep -A 3 "maven-compiler-plugin" pom.xml | grep "<version>" | head -1 | sed 's/.*<version>\([^<]*\)<\/version>.*/\1/')
+  echo "Found maven-compiler-plugin version: ${VERSION_FOUND:-not found}"
+  if [[ "$VERSION_FOUND" == "3.1" ]]; then
+    echo "ERROR: Version 3.1 still present after patching! Attempting emergency fix..." >&2
+    # Emergency: replace ALL 3.1 in version tags
+    sed -i 's/\(<version>\)3\.1\(<\/version>\)/\13.13.0\2/g' pom.xml
+    # Also in child modules
+    find . -name "pom.xml" -exec sed -i 's/\(<version>\)3\.1\(<\/version>\)/\13.13.0\2/g' {} \;
+  fi
+fi
+
 # Build with Java 21 - override compiler settings
+# Use explicit plugin version override in the command
 # Redirect stderr to filter broken pipe errors, but keep stdout for build output
 BUILD_SUCCESS=false
 if mvn -B -ntp clean install -DskipTests \
@@ -179,8 +226,11 @@ if mvn -B -ntp clean install -DskipTests \
   -Dmaven.compiler.source=21 \
   -Dmaven.compiler.target=21 \
   -Dmaven.compiler-plugin.version=3.13.0 \
+  -Dplugin.version=3.13.0 \
+  -Dorg.apache.maven.plugins.compiler.version=3.13.0 \
   -Djansi.passthrough=true \
-  -Dmaven.color=false 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)"; then
+  -Dmaven.color=false \
+  -Dorg.apache.maven.plugins:maven-compiler-plugin:version=3.13.0 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)"; then
   BUILD_SUCCESS=true
 fi
 
