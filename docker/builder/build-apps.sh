@@ -33,6 +33,24 @@ if [[ -z "${DOCKER_USERNAME}" ]]; then
   echo "WARNING: DOCKER_USERNAME not set. Images will be built but may not be pushed." >&2
 fi
 
+# Ensure JAVA_HOME is set correctly (in case profile wasn't sourced)
+if [ -z "${JAVA_HOME:-}" ] || [ ! -d "${JAVA_HOME}" ]; then
+  JAVA_21_HOME=$(update-alternatives --list java 2>/dev/null | grep -i "21" | head -1 | sed 's|/bin/java||')
+  if [ -z "$JAVA_21_HOME" ]; then
+    JAVA_21_HOME=$(ls -d /usr/lib/jvm/temurin-21-jdk-* 2>/dev/null | head -1)
+  fi
+  if [ -n "$JAVA_21_HOME" ] && [ -d "$JAVA_21_HOME" ]; then
+    export JAVA_HOME="$JAVA_21_HOME"
+    export PATH="$JAVA_HOME/bin:$PATH"
+  fi
+fi
+
+# Verify Java 21 is available
+echo "Verifying Java 21 installation:"
+echo "JAVA_HOME=${JAVA_HOME}"
+java -version
+mvn -version | head -3
+
 # Use a persistent maven repo to reduce flaky downloads / corruption.
 M2_DIR="${M2_DIR:-/m2}"
 mkdir -p "${M2_DIR}/repository"
