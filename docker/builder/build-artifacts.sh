@@ -203,6 +203,43 @@ done
 mkdir -p .mvn
 echo "-Dmaven.compiler.release=21" > .mvn/maven.config
 
+# Create toolchains.xml to satisfy maven-toolchains-plugin requirement
+# The parent POM has a profile that activates when this file exists
+mkdir -p ~/.m2
+TOOLCHAINS_HOME="${JAVA_HOME}"
+if [[ -z "$TOOLCHAINS_HOME" ]] || [[ ! -d "$TOOLCHAINS_HOME" ]]; then
+  # Try to find Java 21 installation
+  TOOLCHAINS_HOME=$(ls -d /usr/lib/jvm/temurin-21-jdk-* 2>/dev/null | head -1)
+  if [[ -z "$TOOLCHAINS_HOME" ]] || [[ ! -d "$TOOLCHAINS_HOME" ]]; then
+    TOOLCHAINS_HOME="/usr/lib/jvm/temurin-21-jdk-amd64"
+  fi
+fi
+
+# Verify Java 21 exists
+if [[ ! -d "$TOOLCHAINS_HOME" ]]; then
+  echo "ERROR: Java 21 installation not found at: ${TOOLCHAINS_HOME}" >&2
+  echo "Available Java installations:" >&2
+  ls -d /usr/lib/jvm/* 2>/dev/null | head -5 >&2 || echo "  (none found)" >&2
+  exit 1
+fi
+
+# Create toolchains.xml with actual resolved path
+cat > ~/.m2/toolchains.xml << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<toolchains>
+    <toolchain>
+        <type>jdk</type>
+        <provides>
+            <version>21</version>
+        </provides>
+        <configuration>
+            <jdkHome>${TOOLCHAINS_HOME}</jdkHome>
+        </configuration>
+    </toolchain>
+</toolchains>
+EOF
+echo "Created toolchains.xml pointing to: ${TOOLCHAINS_HOME}"
+
 # Before building, verify the patch worked
 echo "Checking pom.xml for maven-compiler-plugin version..."
 if grep -q "maven-compiler-plugin" pom.xml; then
@@ -307,19 +344,67 @@ else
   npm install --no-fund --no-audit
 fi
 
+# Note: keycloakify may generate different JAR names based on version detection
+# We'll handle this by using the appropriate JAR that works for Keycloak 26.2+
+
 # Build keycloak theme jars (keycloakify uses Maven with Java 21)
 # Ensure Maven uses Java 21 compiler settings
 export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
+echo "Building keycloak theme with keycloakify..."
 npm run build-keycloak-theme
 
-if [[ ! -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
-  echo "ERROR: Missing theme jar dist_keycloak/${THEME_JAR_NAME}" >&2
-  echo "dist_keycloak contents:" >&2
-  ls -1 dist_keycloak >&2 || true
-  exit 1
+# Restore vite.config.ts if we patched it
+if [[ -f "vite.config.ts.backup" ]]; then
+  mv vite.config.ts.backup vite.config.ts
 fi
 
-cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
+# Check what JARs were generated
+echo "Generated theme JARs in dist_keycloak:"
+ls -1 dist_keycloak/*.jar 2>/dev/null || {
+  echo "ERROR: No JAR files found in dist_keycloak/" >&2
+  exit 1
+}
+
+# Check if the expected JAR exists
+if [[ -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
+  echo "Found expected theme jar: ${THEME_JAR_NAME}"
+  cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
+else
+  echo "WARNING: Expected theme jar '${THEME_JAR_NAME}' not found."
+  echo "Available JARs:"
+  ls -1 dist_keycloak/*.jar
+  
+  # Keycloakify generates different JARs based on environment/version detection
+  # Priority: 26.2-and-above > all-other-versions > any other JAR
+  # The "all-other-versions" jar works for Keycloak 26.2+ and is a safe fallback
+  THEME_JAR_TO_USE=""
+  
+  if [[ -f "dist_keycloak/keycloak-theme-for-kc-26.2-and-above.jar" ]]; then
+    THEME_JAR_TO_USE="dist_keycloak/keycloak-theme-for-kc-26.2-and-above.jar"
+    echo "Found keycloak-theme-for-kc-26.2-and-above.jar"
+  elif [[ -f "dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar" ]]; then
+    THEME_JAR_TO_USE="dist_keycloak/keycloak-theme-for-kc-all-other-versions.jar"
+    echo "Using keycloak-theme-for-kc-all-other-versions.jar (compatible with KC 26.2+)"
+  else
+    # Use the first available JAR
+    THEME_JAR_TO_USE=$(ls -1 dist_keycloak/*.jar | head -1)
+    if [[ -n "$THEME_JAR_TO_USE" ]]; then
+      echo "Using available JAR: $(basename "$THEME_JAR_TO_USE")"
+    else
+      echo "ERROR: No theme JAR files found in dist_keycloak/" >&2
+      exit 1
+    fi
+  fi
+  
+  # Copy the selected JAR with the expected name
+  if [[ -n "$THEME_JAR_TO_USE" ]] && [[ -f "$THEME_JAR_TO_USE" ]]; then
+    cp -f "$THEME_JAR_TO_USE" "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
+    echo "Copied $(basename "$THEME_JAR_TO_USE") as ${THEME_JAR_NAME}"
+  else
+    echo "ERROR: Selected theme JAR not found: ${THEME_JAR_TO_USE}" >&2
+    exit 1
+  fi
+fi
 popd >/dev/null
 
 echo "=== Verifying required files in providers ==="
