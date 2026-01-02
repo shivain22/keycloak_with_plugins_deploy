@@ -368,21 +368,38 @@ echo "✓ keycloakify installed: $(npm list keycloakify --depth=0 2>/dev/null | 
 # Ensure Maven uses Java 21 compiler settings
 export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
 
-echo "Building keycloak theme with keycloakify..."
+echo "Building keycloak theme with keycloak-theme..."
 echo "Running: npm run build-keycloak-theme"
+echo "NOTE: keycloakify uses Maven internally - checking for Maven errors..."
 
-# Run build with output capture to check for errors
+# Run build with output capture - DO NOT filter broken pipe errors here
+# We need to see all errors to diagnose issues
 BUILD_OUTPUT=$(npm run build-keycloak-theme 2>&1)
 BUILD_EXIT_CODE=$?
 
-# Show last 50 lines of build output
-echo "=== Build Output (last 50 lines) ==="
-echo "$BUILD_OUTPUT" | tail -50
+# Show last 100 lines of build output (more context for Maven errors)
+echo "=== Build Output (last 100 lines) ==="
+echo "$BUILD_OUTPUT" | tail -100
+
+# Check for Maven errors even if exit code is 0 (keycloakify might not propagate Maven failures)
+if echo "$BUILD_OUTPUT" | grep -qiE "(maven.*error|build.*failed|compilation.*error|BUILD FAILURE)"; then
+  echo "ERROR: Maven build errors detected in output!" >&2
+  echo "Maven error details:" >&2
+  echo "$BUILD_OUTPUT" | grep -iE "(error|failed|failure)" | tail -20 >&2
+  exit 1
+fi
 
 if [[ $BUILD_EXIT_CODE -ne 0 ]]; then
   echo "ERROR: Theme build failed with exit code $BUILD_EXIT_CODE!" >&2
   echo "Full build output:" >&2
   echo "$BUILD_OUTPUT" >&2
+  exit 1
+fi
+
+# Additional check: Look for keycloakify-specific errors
+if echo "$BUILD_OUTPUT" | grep -qiE "(keycloakify.*error|template.*not.*found|jar.*not.*created)"; then
+  echo "ERROR: keycloakify errors detected!" >&2
+  echo "$BUILD_OUTPUT" | grep -iE "(keycloakify|error|failed)" | tail -20 >&2
   exit 1
 fi
 
