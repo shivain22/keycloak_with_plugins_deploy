@@ -350,8 +350,20 @@ fi
 # Build keycloak theme jars (keycloakify uses Maven with Java 21)
 # Ensure Maven uses Java 21 compiler settings
 export MAVEN_OPTS="${MAVEN_OPTS} -Dmaven.compiler.release=21"
+
+# Verify Node and npm versions
+echo "Node version: $(node --version)"
+echo "npm version: $(npm --version)"
+
+# Verify Java 21 is being used
+echo "Java version: $(java -version 2>&1 | head -1)"
+echo "JAVA_HOME: ${JAVA_HOME}"
+
 echo "Building keycloak theme with keycloakify..."
-npm run build-keycloak-theme
+if ! npm run build-keycloak-theme; then
+  echo "ERROR: Theme build failed!" >&2
+  exit 1
+fi
 
 # Restore vite.config.ts if we patched it
 if [[ -f "vite.config.ts.backup" ]]; then
@@ -360,19 +372,45 @@ fi
 
 # Check what JARs were generated
 echo "Generated theme JARs in dist_keycloak:"
-ls -1 dist_keycloak/*.jar 2>/dev/null || {
+ls -lh dist_keycloak/*.jar 2>/dev/null || {
   echo "ERROR: No JAR files found in dist_keycloak/" >&2
   exit 1
 }
 
 # Check if the expected JAR exists
 if [[ -f "dist_keycloak/${THEME_JAR_NAME}" ]]; then
-  echo "Found expected theme jar: ${THEME_JAR_NAME}"
+  JAR_SIZE=$(stat -f%z "dist_keycloak/${THEME_JAR_NAME}" 2>/dev/null || stat -c%s "dist_keycloak/${THEME_JAR_NAME}" 2>/dev/null || echo "unknown")
+  echo "Found expected theme jar: ${THEME_JAR_NAME} (size: ${JAR_SIZE} bytes)"
+  
+  # Verify JAR contains required files before copying
+  echo "Verifying JAR structure..."
+  if ! jar -tf "dist_keycloak/${THEME_JAR_NAME}" | grep -q "META-INF/keycloak-themes.json"; then
+    echo "ERROR: JAR missing keycloak-themes.json!" >&2
+    exit 1
+  fi
+  if ! jar -tf "dist_keycloak/${THEME_JAR_NAME}" | grep -q "login.ftl"; then
+    echo "ERROR: JAR missing login.ftl template!" >&2
+    exit 1
+  fi
+  
+  # Copy to providers directory
   cp -f "dist_keycloak/${THEME_JAR_NAME}" "${PROVIDERS_DIR}/"
+  
+  # Verify copy succeeded and check size
+  if [[ -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}" ]]; then
+    COPIED_SIZE=$(stat -f%z "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || stat -c%s "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || echo "unknown")
+    echo "✓ Copied ${THEME_JAR_NAME} to providers (size: ${COPIED_SIZE} bytes)"
+    if [[ "$JAR_SIZE" != "unknown" ]] && [[ "$COPIED_SIZE" != "unknown" ]] && [[ "$JAR_SIZE" != "$COPIED_SIZE" ]]; then
+      echo "WARNING: JAR size mismatch! Original: ${JAR_SIZE}, Copied: ${COPIED_SIZE}" >&2
+    fi
+  else
+    echo "ERROR: Failed to copy JAR to providers directory!" >&2
+    exit 1
+  fi
 else
   echo "WARNING: Expected theme jar '${THEME_JAR_NAME}' not found."
   echo "Available JARs:"
-  ls -1 dist_keycloak/*.jar
+  ls -lh dist_keycloak/*.jar
   
   # Keycloakify generates different JARs based on environment/version detection
   # Priority: 26.2-and-above > all-other-versions > any other JAR
@@ -396,10 +434,34 @@ else
     fi
   fi
   
-  # Copy the selected JAR with the expected name
+  # Verify JAR before copying
   if [[ -n "$THEME_JAR_TO_USE" ]] && [[ -f "$THEME_JAR_TO_USE" ]]; then
+    JAR_SIZE=$(stat -f%z "$THEME_JAR_TO_USE" 2>/dev/null || stat -c%s "$THEME_JAR_TO_USE" 2>/dev/null || echo "unknown")
+    echo "Verifying JAR structure for $(basename "$THEME_JAR_TO_USE") (size: ${JAR_SIZE} bytes)..."
+    
+    if ! jar -tf "$THEME_JAR_TO_USE" | grep -q "META-INF/keycloak-themes.json"; then
+      echo "ERROR: JAR missing keycloak-themes.json!" >&2
+      exit 1
+    fi
+    if ! jar -tf "$THEME_JAR_TO_USE" | grep -q "login.ftl"; then
+      echo "ERROR: JAR missing login.ftl template!" >&2
+      exit 1
+    fi
+    
+    # Copy the selected JAR with the expected name
     cp -f "$THEME_JAR_TO_USE" "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
-    echo "Copied $(basename "$THEME_JAR_TO_USE") as ${THEME_JAR_NAME}"
+    
+    # Verify copy
+    if [[ -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}" ]]; then
+      COPIED_SIZE=$(stat -f%z "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || stat -c%s "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || echo "unknown")
+      echo "✓ Copied $(basename "$THEME_JAR_TO_USE") as ${THEME_JAR_NAME} (size: ${COPIED_SIZE} bytes)"
+      if [[ "$JAR_SIZE" != "unknown" ]] && [[ "$COPIED_SIZE" != "unknown" ]] && [[ "$JAR_SIZE" != "$COPIED_SIZE" ]]; then
+        echo "WARNING: JAR size mismatch! Original: ${JAR_SIZE}, Copied: ${COPIED_SIZE}" >&2
+      fi
+    else
+      echo "ERROR: Failed to copy JAR to providers directory!" >&2
+      exit 1
+    fi
   else
     echo "ERROR: Selected theme JAR not found: ${THEME_JAR_TO_USE}" >&2
     exit 1
@@ -408,10 +470,44 @@ fi
 popd >/dev/null
 
 echo "=== Verifying required files in providers ==="
-ls -1 "${PROVIDERS_DIR}" || true
+ls -lh "${PROVIDERS_DIR}" || true
 test -f "${PROVIDERS_DIR}/keycloak-phone-provider.jar"
 test -f "${PROVIDERS_DIR}/keycloak-phone-provider-msg91.jar"
 test -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}"
+
+# Final verification: Check theme JAR structure in providers directory
+echo "=== Verifying theme JAR structure in providers ==="
+if [[ -f "${PROVIDERS_DIR}/${THEME_JAR_NAME}" ]]; then
+  FINAL_SIZE=$(stat -f%z "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || stat -c%s "${PROVIDERS_DIR}/${THEME_JAR_NAME}" 2>/dev/null || echo "unknown")
+  echo "Theme JAR size: ${FINAL_SIZE} bytes"
+  
+  # Verify key files exist in the JAR
+  if jar -tf "${PROVIDERS_DIR}/${THEME_JAR_NAME}" | grep -q "META-INF/keycloak-themes.json"; then
+    echo "✓ JAR contains keycloak-themes.json"
+    # Extract and show theme name
+    jar -xf "${PROVIDERS_DIR}/${THEME_JAR_NAME}" META-INF/keycloak-themes.json 2>/dev/null || true
+    if [[ -f "META-INF/keycloak-themes.json" ]]; then
+      echo "Theme registration:"
+      cat META-INF/keycloak-themes.json | grep -A 3 "\"name\"" || cat META-INF/keycloak-themes.json
+      rm -rf META-INF 2>/dev/null || true
+    fi
+  else
+    echo "ERROR: JAR missing keycloak-themes.json!" >&2
+    exit 1
+  fi
+  
+  if jar -tf "${PROVIDERS_DIR}/${THEME_JAR_NAME}" | grep -q "login.ftl"; then
+    echo "✓ JAR contains login.ftl template"
+  else
+    echo "ERROR: JAR missing login.ftl template!" >&2
+    exit 1
+  fi
+  
+  echo "✓ Theme JAR verification passed"
+else
+  echo "ERROR: Theme JAR not found in providers directory!" >&2
+  exit 1
+fi
 
 echo "=== Build container done ==="
 
