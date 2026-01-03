@@ -174,7 +174,32 @@ fi
 echo "==> Stopping existing containers (if any) ..."
 if [ "${CLEAN_VOLUMES}" = "1" ]; then
   echo "==> Removing volumes (this will delete all database data) ..."
+  # Stop and remove containers first
+  docker compose -f "${COMPOSE_FILE}" down 2>/dev/null || true
+  
+  # Get the project name (directory name or from COMPOSE_PROJECT_NAME)
+  PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$(pwd)")}"
+  PROJECT_NAME="${PROJECT_NAME//-/_}"  # Replace hyphens with underscores
+  
+  # Remove volumes explicitly by name (Docker Compose prefixes volumes with project name)
+  echo "  Removing Keycloak database volume (postgres_data) ..."
+  docker volume rm "${PROJECT_NAME}_postgres_data" 2>/dev/null || \
+  docker volume rm "postgres_data" 2>/dev/null || \
+  echo "    (Volume not found or already removed)"
+  
+  echo "  Removing RMS database volume (rms_postgres_data) ..."
+  docker volume rm "${PROJECT_NAME}_rms_postgres_data" 2>/dev/null || \
+  docker volume rm "rms_postgres_data" 2>/dev/null || \
+  echo "    (Volume not found or already removed)"
+  
+  echo "  Removing Maven cache volume (m2_cache) ..."
+  docker volume rm "${PROJECT_NAME}_m2_cache" 2>/dev/null || \
+  docker volume rm "m2_cache" 2>/dev/null || \
+  echo "    (Volume not found or already removed)"
+  
+  # Also try docker compose down -v as a fallback
   docker compose -f "${COMPOSE_FILE}" down -v 2>/dev/null || true
+  
   echo "✅ Volumes removed. Database will be recreated on next start."
 else
   docker compose -f "${COMPOSE_FILE}" down 2>/dev/null || true
