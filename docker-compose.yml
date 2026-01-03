@@ -229,6 +229,7 @@ services:
 
   gateway:
     image: ${GATEWAY_IMAGE:-shivain22/rms-gateway}:${GATEWAY_VERSION:-latest}
+    pull_policy: always
     container_name: rms-gateway
     depends_on:
       apps-builder:
@@ -290,6 +291,7 @@ services:
 
   service:
     image: ${SERVICE_IMAGE:-shivain22/rms-service}:${SERVICE_VERSION:-latest}
+    pull_policy: always
     container_name: rms-service
     depends_on:
       apps-builder:

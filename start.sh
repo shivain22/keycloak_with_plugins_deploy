@@ -222,6 +222,20 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     GATEWAY_VERSION="${GATEWAY_VERSION:-latest}"
     SERVICE_VERSION="${SERVICE_VERSION:-latest}"
     
+    # Remove old local images to force fresh pull
+    echo "==> Removing old local Gateway image: ${GATEWAY_IMAGE}:${GATEWAY_VERSION} ..."
+    docker rmi "${GATEWAY_IMAGE}:${GATEWAY_VERSION}" 2>/dev/null || echo "  (No existing image to remove)"
+    
+    echo "==> Removing old local Service image: ${SERVICE_IMAGE}:${SERVICE_VERSION} ..."
+    docker rmi "${SERVICE_IMAGE}:${SERVICE_VERSION}" 2>/dev/null || echo "  (No existing image to remove)"
+    
+    # Also remove any dangling images with the same name (without tag)
+    echo "==> Cleaning up dangling images for ${GATEWAY_IMAGE} ..."
+    docker images "${GATEWAY_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
+    
+    echo "==> Cleaning up dangling images for ${SERVICE_IMAGE} ..."
+    docker images "${SERVICE_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
+    
     echo "==> Pulling Gateway image: ${GATEWAY_IMAGE}:${GATEWAY_VERSION} ..."
     docker pull "${GATEWAY_IMAGE}:${GATEWAY_VERSION}" || {
       echo "ERROR: Failed to pull Gateway image!" >&2
@@ -236,6 +250,26 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     
     echo "✅ Images pulled successfully"
   elif [ "${NEED_BUILD}" = "1" ]; then
+    # Remove old local images before building to ensure fresh builds
+    source .env 2>/dev/null || true
+    GATEWAY_IMAGE="${GATEWAY_IMAGE:-shivain22/rms-gateway}"
+    SERVICE_IMAGE="${SERVICE_IMAGE:-shivain22/rms-service}"
+    GATEWAY_VERSION="${GATEWAY_VERSION:-latest}"
+    SERVICE_VERSION="${SERVICE_VERSION:-latest}"
+    
+    echo "==> Removing old local Gateway image: ${GATEWAY_IMAGE}:${GATEWAY_VERSION} ..."
+    docker rmi "${GATEWAY_IMAGE}:${GATEWAY_VERSION}" 2>/dev/null || echo "  (No existing image to remove)"
+    
+    echo "==> Removing old local Service image: ${SERVICE_IMAGE}:${SERVICE_VERSION} ..."
+    docker rmi "${SERVICE_IMAGE}:${SERVICE_VERSION}" 2>/dev/null || echo "  (No existing image to remove)"
+    
+    # Also remove any dangling images with the same name (without tag)
+    echo "==> Cleaning up dangling images for ${GATEWAY_IMAGE} ..."
+    docker images "${GATEWAY_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
+    
+    echo "==> Cleaning up dangling images for ${SERVICE_IMAGE} ..."
+    docker images "${SERVICE_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
+    
     echo "==> Building Keycloak artifacts (providers) ..."
     if [ "${BUILD_THEME_ONLY}" = "1" ]; then
       echo "  Building theme only (preserving phone provider JARs)"
