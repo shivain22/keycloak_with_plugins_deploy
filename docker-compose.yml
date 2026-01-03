@@ -245,8 +245,6 @@ services:
         condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
-      # Management/Actuator Configuration - Disable R2DBC health check for multi-tenant setup
-      MANAGEMENT_HEALTH_R2DBC_ENABLED: "false"
       # Database Configuration (Gateway uses 'rms_gateway' database with 'public' schema)
       SPRING_DATASOURCE_URL: ${GATEWAY_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_gateway}}
       SPRING_DATASOURCE_USERNAME: ${GATEWAY_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_gateway}}
