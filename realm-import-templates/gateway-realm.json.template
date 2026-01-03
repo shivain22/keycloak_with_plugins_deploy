@@ -125,11 +125,16 @@
         "${GATEWAY_URL}",
         "${FRONTEND_URL}",
         "${GATEWAY_URL_PROD}",
-        "${DASHBOARD_URL_PROD}"
+        "${DASHBOARD_URL_PROD}",
+        "https://rmsgateway.atparui.com",
+        "*"
       ],
       "redirectUris": [
         "${FRONTEND_URL}/login/oauth2/code/oidc",
-        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
+        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc",
+        "https://rmsgateway.atparui.com",
+        "https://rmsgateway.atparui.com/login/oauth2/code/oidc",
+        "*"
       ]
     },
     {
