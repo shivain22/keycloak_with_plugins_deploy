@@ -15,7 +15,7 @@ The `SecurityConfiguration.java` file in the gateway had hardcoded logic that:
 
 ## Solution
 
-Fixed **TWO** places where redirects were happening:
+Fixed **THREE** critical issues:
 
 ### 1. OAuth2 Success Handler (`SecurityConfiguration.java`)
 
@@ -39,11 +39,26 @@ Updated the `buildAuthorizationRequest()` method to:
    - In local dev: Use gateway port (9293) for OAuth callbacks
 3. **Prevent port 9000 in production**: Even if `X-Forwarded-Port: 9000` is set (misconfigured proxy), ignore it
 
+### 3. Spring Boot Forward Headers Configuration (`application-prod.yml`)
+
+**CRITICAL FIX**: Added `server.forward-headers-strategy: native` to production configuration.
+
+This is **essential** for Spring WebFlux (reactive) to properly use `X-Forwarded-*` headers when behind a reverse proxy. Without this:
+- Spring Security cannot correctly resolve `{baseUrl}` placeholder in redirect URIs
+- The gateway will use the internal container URL instead of the public URL
+- OAuth2 redirects will fail or redirect to wrong ports
+
+**What this does:**
+- Enables Spring Boot to automatically use `X-Forwarded-Proto`, `X-Forwarded-Host`, and `X-Forwarded-Port` headers
+- Allows Spring Security to correctly build redirect URIs based on the original request
+- Works with the custom redirect handlers to ensure correct URLs
+
 ### Key Changes
 
 - **Production**: Never use port 9000/9060, always use standard ports (80/443) or no port
 - **Local Dev**: Use appropriate ports (9000/9060 for webpack, 9293 for gateway)
 - **Robust Detection**: Properly detects reverse proxy scenarios and handles edge cases
+- **Forward Headers**: Enabled native forward headers strategy for proper reverse proxy support
 
 ## Ports for Gateway UI
 
