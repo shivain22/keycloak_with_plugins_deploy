@@ -51,6 +51,9 @@ STOP_ONLY=0
 PUSH_ONLY=0
 PULL_ONLY=0
 REMOVE_IMAGES=0
+FULL_CYCLE=0
+FULL_CYCLE_GATEWAY=0
+FULL_CYCLE_SERVICE=0
 
 for arg in "$@"; do
   case "${arg}" in
@@ -74,6 +77,9 @@ for arg in "$@"; do
     --push-only) PUSH_ONLY=1 ;;
     --pull-only) PULL_ONLY=1 ;;
     --remove-images) REMOVE_IMAGES=1 ;;
+    --full-cycle) FULL_CYCLE=1; FORCE_BUILD=1; REMOVE_IMAGES=1 ;;
+    --full-cycle-gateway) FULL_CYCLE_GATEWAY=1; FORCE_BUILD=1; REMOVE_IMAGES=1 ;;
+    --full-cycle-service) FULL_CYCLE_SERVICE=1; FORCE_BUILD=1; REMOVE_IMAGES=1 ;;
     --help|-h)
       echo "Usage: $0 [options]"
       echo ""
@@ -96,6 +102,9 @@ for arg in "$@"; do
       echo "  --push-only          Push images only (no build/start)"
       echo "  --pull-only          Pull images only (no build/start)"
       echo "  --remove-images      Remove gateway/service images after stopping (prevents cache use)"
+      echo "  --full-cycle         Full cycle: stop+remove images+git pull+build+push+start (gateway+service)"
+      echo "  --full-cycle-gateway Full cycle for gateway only: stop+remove+build+push+start"
+      echo "  --full-cycle-service Full cycle for service only: stop+remove+build+push+start"
       echo ""
       echo "Service options:"
       echo "  --runtime            Use runtime compose (no builders)"
@@ -109,6 +118,9 @@ for arg in "$@"; do
       echo "  $0 --stop-only               # Stop all containers"
       echo "  $0 --stop-only --remove-images # Stop containers and remove images"
       echo "  $0 --clean                   # Stop, remove volumes AND images (full clean)"
+      echo "  $0 --full-cycle              # Full cycle: stop+remove+build+push+start (both gateway & service)"
+      echo "  $0 --full-cycle-gateway      # Full cycle for gateway only"
+      echo "  $0 --full-cycle-service      # Full cycle for service only"
       echo "  $0 --pull-gateway            # Pull only gateway image"
       echo "  $0 --push-service            # Push only service image"
       exit 0
@@ -208,7 +220,19 @@ else
 fi
 
 # Stop containers based on mode
-if [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
+if [ "${FULL_CYCLE}" = "1" ]; then
+  echo "==> Full cycle mode: Stopping Gateway and Service containers ..."
+  docker compose -f "${COMPOSE_FILE}" stop gateway service 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" rm -f gateway service 2>/dev/null || true
+elif [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
+  echo "==> Full cycle gateway mode: Stopping Gateway container only ..."
+  docker compose -f "${COMPOSE_FILE}" stop gateway 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" rm -f gateway 2>/dev/null || true
+elif [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
+  echo "==> Full cycle service mode: Stopping Service container only ..."
+  docker compose -f "${COMPOSE_FILE}" stop service 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" rm -f service 2>/dev/null || true
+elif [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
   echo "==> Stopping Gateway container only ..."
   docker compose -f "${COMPOSE_FILE}" stop gateway 2>/dev/null || true
   docker compose -f "${COMPOSE_FILE}" rm -f gateway 2>/dev/null || true
@@ -251,14 +275,14 @@ else
 fi
 
 # Remove images if requested (after stopping containers)
-if [ "${REMOVE_IMAGES}" = "1" ] || [ "${CLEAN_VOLUMES}" = "1" ] || [ "${BUILD_GATEWAY_ONLY}" = "1" ] || [ "${BUILD_SERVICE_ONLY}" = "1" ]; then
+if [ "${REMOVE_IMAGES}" = "1" ] || [ "${CLEAN_VOLUMES}" = "1" ] || [ "${BUILD_GATEWAY_ONLY}" = "1" ] || [ "${BUILD_SERVICE_ONLY}" = "1" ] || [ "${FULL_CYCLE}" = "1" ] || [ "${FULL_CYCLE_GATEWAY}" = "1" ] || [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
   source .env 2>/dev/null || true
   GATEWAY_IMAGE="${GATEWAY_IMAGE:-shivain22/rms-gateway}"
   SERVICE_IMAGE="${SERVICE_IMAGE:-shivain22/rms-service}"
   GATEWAY_VERSION="${GATEWAY_VERSION:-latest}"
   SERVICE_VERSION="${SERVICE_VERSION:-latest}"
   
-  if [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
+  if [ "${BUILD_GATEWAY_ONLY}" = "1" ] || [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
     # Remove only gateway image
     echo "==> Removing Gateway Docker image to prevent cache usage ..."
     echo "  Removing Gateway image: ${GATEWAY_IMAGE}:${GATEWAY_VERSION} ..."
@@ -266,7 +290,7 @@ if [ "${REMOVE_IMAGES}" = "1" ] || [ "${CLEAN_VOLUMES}" = "1" ] || [ "${BUILD_GA
     echo "  Cleaning up dangling Gateway images ..."
     docker images "${GATEWAY_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
     echo "✅ Gateway image removed. Fresh image will be built on next start."
-  elif [ "${BUILD_SERVICE_ONLY}" = "1" ]; then
+  elif [ "${BUILD_SERVICE_ONLY}" = "1" ] || [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
     # Remove only service image
     echo "==> Removing Service Docker image to prevent cache usage ..."
     echo "  Removing Service image: ${SERVICE_IMAGE}:${SERVICE_VERSION} ..."
@@ -275,7 +299,7 @@ if [ "${REMOVE_IMAGES}" = "1" ] || [ "${CLEAN_VOLUMES}" = "1" ] || [ "${BUILD_GA
     docker images "${SERVICE_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
     echo "✅ Service image removed. Fresh image will be built on next start."
   else
-    # Remove both images (for --clean or --remove-images)
+    # Remove both images (for --clean, --remove-images, or --full-cycle)
     echo "==> Removing Gateway and Service Docker images to prevent cache usage ..."
     echo "  Removing Gateway image: ${GATEWAY_IMAGE}:${GATEWAY_VERSION} ..."
     docker rmi "${GATEWAY_IMAGE}:${GATEWAY_VERSION}" 2>/dev/null || echo "    (Image not found or already removed)"
@@ -420,7 +444,7 @@ if [ "${USE_RUNTIME}" = "0" ]; then
   elif [ "${NEED_BUILD}" = "1" ]; then
     # For selective builds, images are already removed above
     # For regular builds, remove old local images before building to ensure fresh builds
-    if [ "${BUILD_GATEWAY_ONLY}" != "1" ] && [ "${BUILD_SERVICE_ONLY}" != "1" ]; then
+    if [ "${BUILD_GATEWAY_ONLY}" != "1" ] && [ "${BUILD_SERVICE_ONLY}" != "1" ] && [ "${FULL_CYCLE_GATEWAY}" != "1" ] && [ "${FULL_CYCLE_SERVICE}" != "1" ]; then
       source .env 2>/dev/null || true
       GATEWAY_IMAGE="${GATEWAY_IMAGE:-shivain22/rms-gateway}"
       SERVICE_IMAGE="${SERVICE_IMAGE:-shivain22/rms-service}"
@@ -442,7 +466,8 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     fi
     
     # Skip artifacts build for selective builds (only needed for Keycloak, not for app images)
-    if [ "${BUILD_GATEWAY_ONLY}" != "1" ] && [ "${BUILD_SERVICE_ONLY}" != "1" ]; then
+    # Full cycle also skips artifacts (assumes Keycloak is already running)
+    if [ "${BUILD_GATEWAY_ONLY}" != "1" ] && [ "${BUILD_SERVICE_ONLY}" != "1" ] && [ "${FULL_CYCLE}" != "1" ] && [ "${FULL_CYCLE_GATEWAY}" != "1" ] && [ "${FULL_CYCLE_SERVICE}" != "1" ]; then
       echo "==> Building Keycloak artifacts (providers) ..."
       if [ "${BUILD_THEME_ONLY}" = "1" ]; then
         echo "  Building theme only (preserving phone provider JARs)"
@@ -458,20 +483,41 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     fi
 
     # Handle selective builds
-    if [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
+    if [ "${BUILD_GATEWAY_ONLY}" = "1" ] || [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
       echo "==> Building and pushing Gateway Docker image only ..."
+      if [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
+        echo "  (Git pull happens automatically during build - fresh clone from repo)"
+      fi
       docker compose build apps-builder
       docker compose run --rm -e BUILD_GATEWAY_ONLY=1 apps-builder || {
         echo "ERROR: Gateway build failed!" >&2
         exit 1
       }
-    elif [ "${BUILD_SERVICE_ONLY}" = "1" ]; then
+      if [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
+        echo "✅ Gateway image built and pushed successfully"
+      fi
+    elif [ "${BUILD_SERVICE_ONLY}" = "1" ] || [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
       echo "==> Building and pushing Service Docker image only ..."
+      if [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
+        echo "  (Git pull happens automatically during build - fresh clone from repo)"
+      fi
       docker compose build apps-builder
       docker compose run --rm -e BUILD_SERVICE_ONLY=1 apps-builder || {
         echo "ERROR: Service build failed!" >&2
         exit 1
       }
+      if [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
+        echo "✅ Service image built and pushed successfully"
+      fi
+    elif [ "${FULL_CYCLE}" = "1" ]; then
+      echo "==> Full cycle: Building and pushing Gateway and Service Docker images ..."
+      echo "  (Git pull happens automatically during build - fresh clones from repos)"
+      docker compose build apps-builder
+      docker compose run --rm apps-builder || {
+        echo "ERROR: Apps build failed!" >&2
+        exit 1
+      }
+      echo "✅ Both Gateway and Service images built and pushed successfully"
     else
       echo "==> Building and pushing Gateway and Service Docker images ..."
       docker compose build apps-builder
@@ -484,7 +530,73 @@ if [ "${USE_RUNTIME}" = "0" ]; then
 fi
 
 # Handle selective builds - start only the specific container
-if [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
+if [ "${FULL_CYCLE}" = "1" ]; then
+  echo "==> Full cycle: Starting Gateway and Service containers ..."
+  docker compose -f "${COMPOSE_FILE}" up -d --no-deps gateway service || {
+    echo "ERROR: Failed to start Gateway/Service containers!" >&2
+    exit 1
+  }
+  echo "✅ Full cycle completed successfully!"
+  echo ""
+  echo "  ✓ Stopped containers"
+  echo "  ✓ Removed images"
+  echo "  ✓ Git pulled latest code (via fresh clones in build)"
+  echo "  ✓ Built both Gateway and Service images"
+  echo "  ✓ Pushed images to Docker Hub"
+  echo "  ✓ .env file created/updated"
+  echo "  ✓ Started Gateway and Service containers"
+  echo ""
+  echo "Containers are starting. Check status with:"
+  echo "  docker compose -f ${COMPOSE_FILE} ps"
+  echo ""
+  echo "View logs with:"
+  echo "  docker compose -f ${COMPOSE_FILE} logs -f gateway service"
+  exit 0
+elif [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
+  echo "==> Full cycle gateway: Starting Gateway container only ..."
+  docker compose -f "${COMPOSE_FILE}" up -d --no-deps gateway || {
+    echo "ERROR: Failed to start Gateway container!" >&2
+    exit 1
+  }
+  echo "✅ Full cycle gateway completed successfully!"
+  echo ""
+  echo "  ✓ Stopped Gateway container"
+  echo "  ✓ Removed Gateway image"
+  echo "  ✓ Git pulled latest code (via fresh clone in build)"
+  echo "  ✓ Built Gateway image"
+  echo "  ✓ Pushed Gateway image to Docker Hub"
+  echo "  ✓ .env file created/updated"
+  echo "  ✓ Started Gateway container"
+  echo ""
+  echo "Gateway is starting. Check status with:"
+  echo "  docker compose -f ${COMPOSE_FILE} ps gateway"
+  echo ""
+  echo "View logs with:"
+  echo "  docker compose -f ${COMPOSE_FILE} logs -f gateway"
+  exit 0
+elif [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
+  echo "==> Full cycle service: Starting Service container only ..."
+  docker compose -f "${COMPOSE_FILE}" up -d --no-deps service || {
+    echo "ERROR: Failed to start Service container!" >&2
+    exit 1
+  }
+  echo "✅ Full cycle service completed successfully!"
+  echo ""
+  echo "  ✓ Stopped Service container"
+  echo "  ✓ Removed Service image"
+  echo "  ✓ Git pulled latest code (via fresh clone in build)"
+  echo "  ✓ Built Service image"
+  echo "  ✓ Pushed Service image to Docker Hub"
+  echo "  ✓ .env file created/updated"
+  echo "  ✓ Started Service container"
+  echo ""
+  echo "Service is starting. Check status with:"
+  echo "  docker compose -f ${COMPOSE_FILE} ps service"
+  echo ""
+  echo "View logs with:"
+  echo "  docker compose -f ${COMPOSE_FILE} logs -f service"
+  exit 0
+elif [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
   echo "==> Starting Gateway container only (other services should already be running) ..."
   docker compose -f "${COMPOSE_FILE}" up -d --no-deps gateway || {
     echo "ERROR: Failed to start Gateway container!" >&2
