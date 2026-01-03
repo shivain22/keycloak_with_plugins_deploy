@@ -400,13 +400,13 @@
           "authenticator": "auth-cookie",
           "requirement": "ALTERNATIVE",
           "priority": 10,
-          "authenticationFlow": false
+          "authenticatorFlow": false
         },
         {
           "authenticator": "identity-provider-redirector",
           "requirement": "ALTERNATIVE",
           "priority": 20,
-          "authenticationFlow": false,
+          "authenticatorFlow": false,
           "userSetupAllowed": false
         },
         {
@@ -428,7 +428,7 @@
           "authenticator": "auth-phone-auto-reg-form",
           "requirement": "REQUIRED",
           "priority": 10,
-          "authenticationFlow": false,
+          "authenticatorFlow": false,
           "userSetupAllowed": false,
           "authenticationConfig": {
             "alias": "phone-auto-reg-config",
