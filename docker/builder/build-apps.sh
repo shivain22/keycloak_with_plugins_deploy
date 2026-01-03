@@ -23,11 +23,20 @@ SERVICE_BRANCH="${SERVICE_BRANCH:-master}"
 DOCKER_USERNAME="${DOCKER_USERNAME:-}"
 DOCKER_PASSWORD="${DOCKER_PASSWORD:-Asd!@#123}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"
+BUILD_GATEWAY_ONLY="${BUILD_GATEWAY_ONLY:-0}"
+BUILD_SERVICE_ONLY="${BUILD_SERVICE_ONLY:-0}"
 
 echo "=== Apps build container starting ==="
 echo "GATEWAY_REPO_URL=${GATEWAY_REPO_URL} (branch=${GATEWAY_BRANCH})"
 echo "SERVICE_REPO_URL=${SERVICE_REPO_URL} (branch=${SERVICE_BRANCH})"
 echo "DOCKER_USERNAME=${DOCKER_USERNAME}"
+if [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
+  echo "BUILD MODE: Gateway only"
+elif [ "${BUILD_SERVICE_ONLY}" = "1" ]; then
+  echo "BUILD MODE: Service only"
+else
+  echo "BUILD MODE: Both Gateway and Service"
+fi
 
 if [[ -z "${DOCKER_USERNAME}" ]]; then
   echo "WARNING: DOCKER_USERNAME not set. Images will be built but may not be pushed." >&2
@@ -102,115 +111,119 @@ git_clone() {
 # Note: Jib handles Docker Hub authentication via -Ddocker.password
 # No need to run docker login separately
 
-# Build Gateway
-echo "=== Building Gateway (rms) ==="
-gateway_dir="${tmp}/rms"
-git_clone "${GATEWAY_REPO_URL}" "${GATEWAY_BRANCH}" "${gateway_dir}"
-pushd "${gateway_dir}" >/dev/null
+# Build Gateway (if not service-only)
+if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
+  echo "=== Building Gateway (rms) ==="
+  gateway_dir="${tmp}/rms"
+  git_clone "${GATEWAY_REPO_URL}" "${GATEWAY_BRANCH}" "${gateway_dir}"
+  pushd "${gateway_dir}" >/dev/null
 
-# Determine Maven wrapper command
-MVN_CMD="mvn"
-if [[ -f "./mvnw" ]]; then
-  chmod +x ./mvnw
-  MVN_CMD="./mvnw"
-elif [[ -f "./mvnw.cmd" ]]; then
-  # Windows wrapper, but we're in Linux container, use mvn
+  # Determine Maven wrapper command
   MVN_CMD="mvn"
+  if [[ -f "./mvnw" ]]; then
+    chmod +x ./mvnw
+    MVN_CMD="./mvnw"
+  elif [[ -f "./mvnw.cmd" ]]; then
+    # Windows wrapper, but we're in Linux container, use mvn
+    MVN_CMD="mvn"
+  fi
+
+  # Build and push Docker image
+  echo "Building and pushing gateway Docker image..."
+  # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
+  # Also set compiler properties explicitly
+  # Filter broken pipe errors from output
+  set +e
+  if [[ -n "${DOCKER_USERNAME}" ]]; then
+    ${MVN_CMD} clean package jib:build \
+      -Dmaven.compiler.release=21 \
+      -Dmaven.compiler.source=21 \
+      -Dmaven.compiler.target=21 \
+      -Dmaven.compiler-plugin.version=3.13.0 \
+      -Djansi.passthrough=true \
+      -Dmaven.color=false \
+      -Ddocker.username="${DOCKER_USERNAME}" \
+      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+    MVN_EXIT_CODE=${PIPESTATUS[0]}
+  else
+    ${MVN_CMD} clean package jib:build \
+      -Dmaven.compiler.release=21 \
+      -Dmaven.compiler.source=21 \
+      -Dmaven.compiler.target=21 \
+      -Dmaven.compiler-plugin.version=3.13.0 \
+      -Djansi.passthrough=true \
+      -Dmaven.color=false \
+      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+    MVN_EXIT_CODE=${PIPESTATUS[0]}
+  fi
+  set -e
+
+  # Check if build actually succeeded (ignore broken pipe errors)
+  if [[ $MVN_EXIT_CODE -ne 0 ]]; then
+    echo "ERROR: Gateway build failed (exit code: $MVN_EXIT_CODE)!" >&2
+    exit 1
+  fi
+
+  echo "Gateway image built and pushed successfully"
+  popd >/dev/null
 fi
 
-# Build and push Docker image
-echo "Building and pushing gateway Docker image..."
-# Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
-# Also set compiler properties explicitly
-# Filter broken pipe errors from output
-set +e
-if [[ -n "${DOCKER_USERNAME}" ]]; then
-  ${MVN_CMD} clean package jib:build \
-    -Dmaven.compiler.release=21 \
-    -Dmaven.compiler.source=21 \
-    -Dmaven.compiler.target=21 \
-    -Dmaven.compiler-plugin.version=3.13.0 \
-    -Djansi.passthrough=true \
-    -Dmaven.color=false \
-    -Ddocker.username="${DOCKER_USERNAME}" \
-    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-  MVN_EXIT_CODE=${PIPESTATUS[0]}
-else
-  ${MVN_CMD} clean package jib:build \
-    -Dmaven.compiler.release=21 \
-    -Dmaven.compiler.source=21 \
-    -Dmaven.compiler.target=21 \
-    -Dmaven.compiler-plugin.version=3.13.0 \
-    -Djansi.passthrough=true \
-    -Dmaven.color=false \
-    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-  MVN_EXIT_CODE=${PIPESTATUS[0]}
-fi
-set -e
+# Build Service (if not gateway-only)
+if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
+  echo "=== Building Service (rms-service) ==="
+  service_dir="${tmp}/rms-service"
+  git_clone "${SERVICE_REPO_URL}" "${SERVICE_BRANCH}" "${service_dir}"
+  pushd "${service_dir}" >/dev/null
 
-# Check if build actually succeeded (ignore broken pipe errors)
-if [[ $MVN_EXIT_CODE -ne 0 ]]; then
-  echo "ERROR: Gateway build failed (exit code: $MVN_EXIT_CODE)!" >&2
-  exit 1
-fi
-
-echo "Gateway image built and pushed successfully"
-popd >/dev/null
-
-# Build Service
-echo "=== Building Service (rms-service) ==="
-service_dir="${tmp}/rms-service"
-git_clone "${SERVICE_REPO_URL}" "${SERVICE_BRANCH}" "${service_dir}"
-pushd "${service_dir}" >/dev/null
-
-# Determine Maven wrapper command
-MVN_CMD="mvn"
-if [[ -f "./mvnw" ]]; then
-  chmod +x ./mvnw
-  MVN_CMD="./mvnw"
-elif [[ -f "./mvnw.cmd" ]]; then
-  # Windows wrapper, but we're in Linux container, use mvn
+  # Determine Maven wrapper command
   MVN_CMD="mvn"
-fi
+  if [[ -f "./mvnw" ]]; then
+    chmod +x ./mvnw
+    MVN_CMD="./mvnw"
+  elif [[ -f "./mvnw.cmd" ]]; then
+    # Windows wrapper, but we're in Linux container, use mvn
+    MVN_CMD="mvn"
+  fi
 
-# Build and push Docker image
-echo "Building and pushing service Docker image..."
-# Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
-# Also set compiler properties explicitly
-# Filter broken pipe errors from output
-set +e
-if [[ -n "${DOCKER_USERNAME}" ]]; then
-  ${MVN_CMD} clean package jib:build \
-    -Dmaven.compiler.release=21 \
-    -Dmaven.compiler.source=21 \
-    -Dmaven.compiler.target=21 \
-    -Dmaven.compiler-plugin.version=3.13.0 \
-    -Djansi.passthrough=true \
-    -Dmaven.color=false \
-    -Ddocker.username="${DOCKER_USERNAME}" \
-    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-  MVN_EXIT_CODE=${PIPESTATUS[0]}
-else
-  ${MVN_CMD} clean package jib:build \
-    -Dmaven.compiler.release=21 \
-    -Dmaven.compiler.source=21 \
-    -Dmaven.compiler.target=21 \
-    -Dmaven.compiler-plugin.version=3.13.0 \
-    -Djansi.passthrough=true \
-    -Dmaven.color=false \
-    -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-  MVN_EXIT_CODE=${PIPESTATUS[0]}
-fi
-set -e
+  # Build and push Docker image
+  echo "Building and pushing service Docker image..."
+  # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
+  # Also set compiler properties explicitly
+  # Filter broken pipe errors from output
+  set +e
+  if [[ -n "${DOCKER_USERNAME}" ]]; then
+    ${MVN_CMD} clean package jib:build \
+      -Dmaven.compiler.release=21 \
+      -Dmaven.compiler.source=21 \
+      -Dmaven.compiler.target=21 \
+      -Dmaven.compiler-plugin.version=3.13.0 \
+      -Djansi.passthrough=true \
+      -Dmaven.color=false \
+      -Ddocker.username="${DOCKER_USERNAME}" \
+      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+    MVN_EXIT_CODE=${PIPESTATUS[0]}
+  else
+    ${MVN_CMD} clean package jib:build \
+      -Dmaven.compiler.release=21 \
+      -Dmaven.compiler.source=21 \
+      -Dmaven.compiler.target=21 \
+      -Dmaven.compiler-plugin.version=3.13.0 \
+      -Djansi.passthrough=true \
+      -Dmaven.color=false \
+      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
+    MVN_EXIT_CODE=${PIPESTATUS[0]}
+  fi
+  set -e
 
-# Check if build actually succeeded (ignore broken pipe errors)
-if [[ $MVN_EXIT_CODE -ne 0 ]]; then
-  echo "ERROR: Service build failed (exit code: $MVN_EXIT_CODE)!" >&2
-  exit 1
-fi
+  # Check if build actually succeeded (ignore broken pipe errors)
+  if [[ $MVN_EXIT_CODE -ne 0 ]]; then
+    echo "ERROR: Service build failed (exit code: $MVN_EXIT_CODE)!" >&2
+    exit 1
+  fi
 
-echo "Service image built and pushed successfully"
-popd >/dev/null
+  echo "Service image built and pushed successfully"
+  popd >/dev/null
+fi
 
 echo "=== Apps build container done ==="
 
