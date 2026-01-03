@@ -316,11 +316,12 @@ services:
       SPRING_R2DBC_USERNAME: ${SERVICE_R2DBC_USERNAME:-${SPRING_R2DBC_USERNAME:-rms_service}}
       SPRING_R2DBC_PASSWORD: ${SERVICE_R2DBC_PASSWORD:-${SPRING_R2DBC_PASSWORD:-rms_service}}
       # Custom R2DBC config variables used by MultiTenantDatabaseConfig (Service uses database 'rms_service')
-      DB_HOST: ${DB_HOST:-rms-postgresql}
-      DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-rms_service}
-      DB_USERNAME: ${DB_USERNAME:-rms_service}
-      DB_PASSWORD: ${DB_PASSWORD:-rms_service}
+      # Use SERVICE_DB_NAME to avoid conflicts with gateway's DB_NAME
+      DB_HOST: ${SERVICE_DB_HOST:-${DB_HOST:-rms-postgresql}}
+      DB_PORT: ${SERVICE_DB_PORT:-${DB_PORT:-5432}}
+      DB_NAME: ${SERVICE_DB_NAME:-rms_service}
+      DB_USERNAME: ${SERVICE_DB_USERNAME:-${DB_USERNAME:-rms_service}}
+      DB_PASSWORD: ${SERVICE_DB_PASSWORD:-${DB_PASSWORD:-rms_service}}
       SPRING_LIQUIBASE_URL: ${SERVICE_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service?currentSchema=public}}
       SPRING_LIQUIBASE_USER: ${SERVICE_LIQUIBASE_USER:-${SPRING_LIQUIBASE_USER:-rms_service}}
       SPRING_LIQUIBASE_PASSWORD: ${SERVICE_LIQUIBASE_PASSWORD:-${SPRING_LIQUIBASE_PASSWORD:-rms_service}}
