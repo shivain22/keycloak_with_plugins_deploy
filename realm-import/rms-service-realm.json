@@ -398,15 +398,7 @@
           "priority": 10,
           "authenticatorFlow": false,
           "userSetupAllowed": false,
-          "authenticatorConfig": {
-            "alias": "phone-auto-reg-config",
-            "config": {
-              "enableAutoRegistration": "true",
-              "autoRegPhoneAsUsername": "true",
-              "loginWithPhoneVerify": "true",
-              "loginWithPhoneNumber": "true"
-            }
-          }
+          "authenticatorConfig": "phone-auto-reg-config"
         }
       ]
     }

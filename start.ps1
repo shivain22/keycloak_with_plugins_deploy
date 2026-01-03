@@ -86,9 +86,9 @@ if ($LASTEXITCODE -ne 0 -or -not $?) {
 
 Write-Host "==> Starting Postgres + Keycloak + Gateway + Service ..." -ForegroundColor Cyan
 if ($rebuild) {
-    & docker compose up --build -d
+    & docker compose up --build -d --remove-orphans
 } else {
-    & docker compose up -d
+    & docker compose up -d --remove-orphans
 }
 if ($LASTEXITCODE -ne 0 -or -not $?) {
     Write-Host "ERROR: Failed to start containers!" -ForegroundColor Red

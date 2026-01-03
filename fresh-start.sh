@@ -100,7 +100,7 @@ COMPOSE_BUILD_FLAG=""
 if [ "${REBUILD}" = "1" ]; then
   COMPOSE_BUILD_FLAG="--build"
 fi
-docker compose up ${COMPOSE_BUILD_FLAG} -d
+docker compose up ${COMPOSE_BUILD_FLAG} -d --remove-orphans
 
 echo "==> Done."
 # Read KEYCLOAK_HTTP_PORT from .env file (docker compose reads it automatically)
