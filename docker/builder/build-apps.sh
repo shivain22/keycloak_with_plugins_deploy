@@ -95,7 +95,9 @@ git_clone() {
   local branch="$2"
   local dest="$3"
 
-  local args=(clone --depth 1 --branch "${branch}" "${url}" "${dest}")
+  # Clone with full history to get proper git commit info for versioning
+  # Use --depth 50 as a compromise between speed and having enough history for versioning
+  local args=(clone --depth 50 --branch "${branch}" "${url}" "${dest}")
 
   # Disable interactive prompts inside the container.
   export GIT_TERMINAL_PROMPT=0
@@ -108,6 +110,55 @@ git_clone() {
   fi
 }
 
+# Generate version from git commit info
+generate_version() {
+  # Usage: generate_version <repo_dir>
+  local repo_dir="$1"
+  pushd "${repo_dir}" >/dev/null
+  
+  # Get git commit hash (short)
+  local commit_hash=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+  
+  # Get git commit count (for version incrementing)
+  local commit_count=$(git rev-list --count HEAD 2>/dev/null || echo "0")
+  
+  # Get branch name
+  local branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
+  
+  # Get timestamp
+  local timestamp=$(date +%Y%m%d%H%M%S)
+  
+  # Get commit date
+  local commit_date=$(git log -1 --format=%cd --date=format:%Y%m%d 2>/dev/null || echo "$(date +%Y%m%d)")
+  
+  # Generate version: base-version.commit-count.commit-hash.timestamp
+  # Example: 0.0.1.123.abc1234.20260104120000
+  local base_version="0.0.1"
+  local version="${base_version}.${commit_count}.${commit_hash}.${timestamp}"
+  
+  # Also create a shorter version for display
+  local short_version="${base_version}.${commit_count}-${commit_hash}"
+  
+  # Export variables for use in parent scope
+  export GIT_VERSION="${version}"
+  export GIT_SHORT_VERSION="${short_version}"
+  export GIT_COMMIT_HASH="${commit_hash}"
+  export GIT_COMMIT_COUNT="${commit_count}"
+  export GIT_BRANCH="${branch}"
+  export GIT_COMMIT_DATE="${commit_date}"
+  export BUILD_TIMESTAMP="${timestamp}"
+  
+  echo "GIT_VERSION=${version}"
+  echo "GIT_SHORT_VERSION=${short_version}"
+  echo "GIT_COMMIT_HASH=${commit_hash}"
+  echo "GIT_COMMIT_COUNT=${commit_count}"
+  echo "GIT_BRANCH=${branch}"
+  echo "GIT_COMMIT_DATE=${commit_date}"
+  echo "BUILD_TIMESTAMP=${timestamp}"
+  
+  popd >/dev/null
+}
+
 # Note: Jib handles Docker Hub authentication via -Ddocker.password
 # No need to run docker login separately
 
@@ -116,6 +167,16 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
   echo "=== Building Gateway (rms) ==="
   gateway_dir="${tmp}/rms"
   git_clone "${GATEWAY_REPO_URL}" "${GATEWAY_BRANCH}" "${gateway_dir}"
+  
+  # Generate version info from git
+  echo "=== Generating Gateway Version Info ==="
+  eval $(generate_version "${gateway_dir}")
+  echo "Gateway Version: ${GIT_SHORT_VERSION}"
+  echo "Gateway Full Version: ${GIT_VERSION}"
+  echo "Gateway Commit: ${GIT_COMMIT_HASH} (${GIT_COMMIT_COUNT} commits)"
+  echo "Gateway Branch: ${GIT_BRANCH}"
+  echo "Gateway Commit Date: ${GIT_COMMIT_DATE}"
+  
   pushd "${gateway_dir}" >/dev/null
 
   # Determine Maven wrapper command
@@ -129,9 +190,10 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
   fi
 
   # Build and push Docker image
-  echo "Building and pushing gateway Docker image..."
+  echo "Building and pushing gateway Docker image with version ${GIT_SHORT_VERSION}..."
   # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
   # Also set compiler properties explicitly
+  # Pass git version info as Maven properties for use in application
   # Filter broken pipe errors from output
   set +e
   if [[ -n "${DOCKER_USERNAME}" ]]; then
@@ -142,6 +204,12 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
       -Dmaven.compiler-plugin.version=3.13.0 \
       -Djansi.passthrough=true \
       -Dmaven.color=false \
+      -Dbuild.version="${GIT_VERSION}" \
+      -Dbuild.short.version="${GIT_SHORT_VERSION}" \
+      -Dbuild.commit.hash="${GIT_COMMIT_HASH}" \
+      -Dbuild.commit.count="${GIT_COMMIT_COUNT}" \
+      -Dbuild.branch="${GIT_BRANCH}" \
+      -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
       -Ddocker.username="${DOCKER_USERNAME}" \
       -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
     MVN_EXIT_CODE=${PIPESTATUS[0]}
@@ -153,6 +221,12 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
       -Dmaven.compiler-plugin.version=3.13.0 \
       -Djansi.passthrough=true \
       -Dmaven.color=false \
+      -Dbuild.version="${GIT_VERSION}" \
+      -Dbuild.short.version="${GIT_SHORT_VERSION}" \
+      -Dbuild.commit.hash="${GIT_COMMIT_HASH}" \
+      -Dbuild.commit.count="${GIT_COMMIT_COUNT}" \
+      -Dbuild.branch="${GIT_BRANCH}" \
+      -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
       -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
     MVN_EXIT_CODE=${PIPESTATUS[0]}
   fi
@@ -173,6 +247,16 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
   echo "=== Building Service (rms-service) ==="
   service_dir="${tmp}/rms-service"
   git_clone "${SERVICE_REPO_URL}" "${SERVICE_BRANCH}" "${service_dir}"
+  
+  # Generate version info from git
+  echo "=== Generating Service Version Info ==="
+  eval $(generate_version "${service_dir}")
+  echo "Service Version: ${GIT_SHORT_VERSION}"
+  echo "Service Full Version: ${GIT_VERSION}"
+  echo "Service Commit: ${GIT_COMMIT_HASH} (${GIT_COMMIT_COUNT} commits)"
+  echo "Service Branch: ${GIT_BRANCH}"
+  echo "Service Commit Date: ${GIT_COMMIT_DATE}"
+  
   pushd "${service_dir}" >/dev/null
 
   # Determine Maven wrapper command
@@ -186,9 +270,10 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
   fi
 
   # Build and push Docker image
-  echo "Building and pushing service Docker image..."
+  echo "Building and pushing service Docker image with version ${GIT_SHORT_VERSION}..."
   # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
   # Also set compiler properties explicitly
+  # Pass git version info as Maven properties for use in application
   # Filter broken pipe errors from output
   set +e
   if [[ -n "${DOCKER_USERNAME}" ]]; then
@@ -199,6 +284,12 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
       -Dmaven.compiler-plugin.version=3.13.0 \
       -Djansi.passthrough=true \
       -Dmaven.color=false \
+      -Dbuild.version="${GIT_VERSION}" \
+      -Dbuild.short.version="${GIT_SHORT_VERSION}" \
+      -Dbuild.commit.hash="${GIT_COMMIT_HASH}" \
+      -Dbuild.commit.count="${GIT_COMMIT_COUNT}" \
+      -Dbuild.branch="${GIT_BRANCH}" \
+      -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
       -Ddocker.username="${DOCKER_USERNAME}" \
       -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
     MVN_EXIT_CODE=${PIPESTATUS[0]}
@@ -210,6 +301,12 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
       -Dmaven.compiler-plugin.version=3.13.0 \
       -Djansi.passthrough=true \
       -Dmaven.color=false \
+      -Dbuild.version="${GIT_VERSION}" \
+      -Dbuild.short.version="${GIT_SHORT_VERSION}" \
+      -Dbuild.commit.hash="${GIT_COMMIT_HASH}" \
+      -Dbuild.commit.count="${GIT_COMMIT_COUNT}" \
+      -Dbuild.branch="${GIT_BRANCH}" \
+      -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
       -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
     MVN_EXIT_CODE=${PIPESTATUS[0]}
   fi
