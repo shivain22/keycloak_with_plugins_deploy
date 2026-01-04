@@ -130,7 +130,7 @@ services:
     restart: unless-stopped
 
   consul:
-    image: consul:1.22.2
+    image: hashicorp/consul:latest
     container_name: rms-consul
     ports:
       - '${CONSUL_PORT:-8500}:8500'
@@ -140,7 +140,7 @@ services:
     restart: unless-stopped
 
   oauth2-proxy:
-    image: quay.io/oauth2-proxy/oauth2-proxy:v7.9.0
+    image: quay.io/oauth2-proxy/oauth2-proxy:latest
     container_name: rms-oauth2-proxy
     depends_on:
       consul:
