@@ -247,7 +247,7 @@ services:
       elasticsearch:
         condition: service_started
     environment:
-      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
+      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod,api-docs}
       # Build version information (from .env file, set during build)
       BUILD_VERSION: ${GATEWAY_BUILD_VERSION:-}
       BUILD_SHORT_VERSION: ${GATEWAY_BUILD_SHORT_VERSION:-}

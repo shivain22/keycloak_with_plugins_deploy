@@ -250,7 +250,7 @@ services:
       wait-for-infrastructure:
         condition: service_completed_successfully
     environment:
-      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
+      SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod,api-docs}
       # Database Configuration (Gateway uses 'rms_gateway' database with 'public' schema)
       SPRING_DATASOURCE_URL: ${GATEWAY_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_gateway}}
       SPRING_DATASOURCE_USERNAME: ${GATEWAY_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_gateway}}
