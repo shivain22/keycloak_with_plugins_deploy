@@ -145,8 +145,8 @@ services:
     depends_on:
       consul:
         condition: service_started
-      keycloak:
-        condition: service_started
+      # Note: keycloak dependency removed to allow starting oauth2-proxy independently
+      # oauth2-proxy will start but authentication will fail until keycloak is available
     ports:
       - '${OAUTH2_PROXY_PORT:-4180}:4180'
     environment:
