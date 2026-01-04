@@ -194,9 +194,11 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
   # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
   # Also set compiler properties explicitly
   # Pass git version info as Maven properties for use in application
-  # Filter broken pipe errors from output
-  set +e
+  # Capture output to temp file to preserve exit code while filtering
+  BUILD_OUTPUT=$(mktemp)
+  MVN_EXIT_CODE=0
   if [[ -n "${DOCKER_USERNAME}" ]]; then
+    set +e  # Temporarily disable exit on error to capture exit code
     ${MVN_CMD} clean package jib:build \
       -Dmaven.compiler.release=21 \
       -Dmaven.compiler.source=21 \
@@ -211,9 +213,11 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
       -Dbuild.branch="${GIT_BRANCH}" \
       -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
       -Ddocker.username="${DOCKER_USERNAME}" \
-      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-    MVN_EXIT_CODE=${PIPESTATUS[0]}
+      -Ddocker.password="${DOCKER_PASSWORD}" > "${BUILD_OUTPUT}" 2>&1
+    MVN_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
   else
+    set +e  # Temporarily disable exit on error to capture exit code
     ${MVN_CMD} clean package jib:build \
       -Dmaven.compiler.release=21 \
       -Dmaven.compiler.source=21 \
@@ -227,12 +231,16 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
       -Dbuild.commit.count="${GIT_COMMIT_COUNT}" \
       -Dbuild.branch="${GIT_BRANCH}" \
       -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
-      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-    MVN_EXIT_CODE=${PIPESTATUS[0]}
+      -Ddocker.password="${DOCKER_PASSWORD}" > "${BUILD_OUTPUT}" 2>&1
+    MVN_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
   fi
-  set -e
 
-  # Check if build actually succeeded (ignore broken pipe errors)
+  # Filter and display output
+  grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" < "${BUILD_OUTPUT}" || true
+  rm -f "${BUILD_OUTPUT}"
+
+  # Check if build actually succeeded
   if [[ $MVN_EXIT_CODE -ne 0 ]]; then
     echo "ERROR: Gateway build failed (exit code: $MVN_EXIT_CODE)!" >&2
     exit 1
@@ -274,9 +282,11 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
   # Override maven-compiler-plugin version to ensure Java 21 support (3.11.0+ supports Java 21)
   # Also set compiler properties explicitly
   # Pass git version info as Maven properties for use in application
-  # Filter broken pipe errors from output
-  set +e
+  # Capture output to temp file to preserve exit code while filtering
+  BUILD_OUTPUT=$(mktemp)
+  MVN_EXIT_CODE=0
   if [[ -n "${DOCKER_USERNAME}" ]]; then
+    set +e  # Temporarily disable exit on error to capture exit code
     ${MVN_CMD} clean package jib:build \
       -Dmaven.compiler.release=21 \
       -Dmaven.compiler.source=21 \
@@ -291,9 +301,11 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
       -Dbuild.branch="${GIT_BRANCH}" \
       -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
       -Ddocker.username="${DOCKER_USERNAME}" \
-      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-    MVN_EXIT_CODE=${PIPESTATUS[0]}
+      -Ddocker.password="${DOCKER_PASSWORD}" > "${BUILD_OUTPUT}" 2>&1
+    MVN_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
   else
+    set +e  # Temporarily disable exit on error to capture exit code
     ${MVN_CMD} clean package jib:build \
       -Dmaven.compiler.release=21 \
       -Dmaven.compiler.source=21 \
@@ -307,12 +319,16 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
       -Dbuild.commit.count="${GIT_COMMIT_COUNT}" \
       -Dbuild.branch="${GIT_BRANCH}" \
       -Dbuild.timestamp="${BUILD_TIMESTAMP}" \
-      -Ddocker.password="${DOCKER_PASSWORD}" 2>&1 | grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" || true
-    MVN_EXIT_CODE=${PIPESTATUS[0]}
+      -Ddocker.password="${DOCKER_PASSWORD}" > "${BUILD_OUTPUT}" 2>&1
+    MVN_EXIT_CODE=$?
+    set -e  # Re-enable exit on error
   fi
-  set -e
 
-  # Check if build actually succeeded (ignore broken pipe errors)
+  # Filter and display output
+  grep -v -E "(Broken pipe|java.io.IOError|Exception in thread)" < "${BUILD_OUTPUT}" || true
+  rm -f "${BUILD_OUTPUT}"
+
+  # Check if build actually succeeded
   if [[ $MVN_EXIT_CODE -ne 0 ]]; then
     echo "ERROR: Service build failed (exit code: $MVN_EXIT_CODE)!" >&2
     exit 1
