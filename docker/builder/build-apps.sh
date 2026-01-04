@@ -177,6 +177,19 @@ if [[ "${BUILD_SERVICE_ONLY}" != "1" ]]; then
   echo "Gateway Branch: ${GIT_BRANCH}"
   echo "Gateway Commit Date: ${GIT_COMMIT_DATE}"
   
+  # Save version info to file for use in .env
+  BUILD_INFO_DIR="${BUILD_INFO_DIR:-/work/build-info}"
+  mkdir -p "${BUILD_INFO_DIR}"
+  cat > "${BUILD_INFO_DIR}/gateway-version.env" <<EOF
+GATEWAY_BUILD_VERSION=${GIT_VERSION}
+GATEWAY_BUILD_SHORT_VERSION=${GIT_SHORT_VERSION}
+GATEWAY_BUILD_COMMIT_HASH=${GIT_COMMIT_HASH}
+GATEWAY_BUILD_COMMIT_COUNT=${GIT_COMMIT_COUNT}
+GATEWAY_BUILD_BRANCH=${GIT_BRANCH}
+GATEWAY_BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+EOF
+  echo "Gateway version info saved to ${BUILD_INFO_DIR}/gateway-version.env"
+  
   pushd "${gateway_dir}" >/dev/null
 
   # Determine Maven wrapper command
@@ -264,6 +277,19 @@ if [[ "${BUILD_GATEWAY_ONLY}" != "1" ]]; then
   echo "Service Commit: ${GIT_COMMIT_HASH} (${GIT_COMMIT_COUNT} commits)"
   echo "Service Branch: ${GIT_BRANCH}"
   echo "Service Commit Date: ${GIT_COMMIT_DATE}"
+  
+  # Save version info to file for use in .env
+  BUILD_INFO_DIR="${BUILD_INFO_DIR:-/work/build-info}"
+  mkdir -p "${BUILD_INFO_DIR}"
+  cat > "${BUILD_INFO_DIR}/service-version.env" <<EOF
+SERVICE_BUILD_VERSION=${GIT_VERSION}
+SERVICE_BUILD_SHORT_VERSION=${GIT_SHORT_VERSION}
+SERVICE_BUILD_COMMIT_HASH=${GIT_COMMIT_HASH}
+SERVICE_BUILD_COMMIT_COUNT=${GIT_COMMIT_COUNT}
+SERVICE_BUILD_BRANCH=${GIT_BRANCH}
+SERVICE_BUILD_TIMESTAMP=${BUILD_TIMESTAMP}
+EOF
+  echo "Service version info saved to ${BUILD_INFO_DIR}/service-version.env"
   
   pushd "${service_dir}" >/dev/null
 

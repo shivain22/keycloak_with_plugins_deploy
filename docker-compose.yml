@@ -41,6 +41,8 @@ services:
     volumes:
       # Maven cache to avoid flaky re-downloads
       - m2_cache:/m2
+      # Shared directory for build version info
+      - ./build-info:/work/build-info
     restart: "no"
 
   db:
@@ -246,6 +248,13 @@ services:
         condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: ${GATEWAY_PROFILE:-prod}
+      # Build version information (from .env file, set during build)
+      BUILD_VERSION: ${GATEWAY_BUILD_VERSION:-}
+      BUILD_SHORT_VERSION: ${GATEWAY_BUILD_SHORT_VERSION:-}
+      BUILD_COMMIT_HASH: ${GATEWAY_BUILD_COMMIT_HASH:-}
+      BUILD_COMMIT_COUNT: ${GATEWAY_BUILD_COMMIT_COUNT:-}
+      BUILD_BRANCH: ${GATEWAY_BUILD_BRANCH:-}
+      BUILD_TIMESTAMP: ${GATEWAY_BUILD_TIMESTAMP:-}
       # Database Configuration (Gateway uses 'rms_gateway' database with 'public' schema)
       SPRING_DATASOURCE_URL: ${GATEWAY_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_gateway}}
       SPRING_DATASOURCE_USERNAME: ${GATEWAY_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_gateway}}
@@ -308,6 +317,13 @@ services:
         condition: service_started
     environment:
       SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
+      # Build version information (from .env file, set during build)
+      BUILD_VERSION: ${SERVICE_BUILD_VERSION:-}
+      BUILD_SHORT_VERSION: ${SERVICE_BUILD_SHORT_VERSION:-}
+      BUILD_COMMIT_HASH: ${SERVICE_BUILD_COMMIT_HASH:-}
+      BUILD_COMMIT_COUNT: ${SERVICE_BUILD_COMMIT_COUNT:-}
+      BUILD_BRANCH: ${SERVICE_BUILD_BRANCH:-}
+      BUILD_TIMESTAMP: ${SERVICE_BUILD_TIMESTAMP:-}
       # Database Configuration (Service uses 'rms_service' database with 'public' schema)
       SPRING_DATASOURCE_URL: ${SERVICE_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service}}
       SPRING_DATASOURCE_USERNAME: ${SERVICE_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_service}}

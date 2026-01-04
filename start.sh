@@ -152,6 +152,33 @@ else
   echo "✅ .env file created/updated from env.example"
 fi
 
+# Update .env with build version info if available
+if [ -f "build-info/gateway-version.env" ]; then
+  echo "==> Updating .env with Gateway build version info ..."
+  # Append or update version info in .env
+  while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    [[ -z "$key" || "$key" =~ ^# ]] && continue
+    # Remove existing entry if present, then append new one
+    sed -i "/^${key}=/d" .env 2>/dev/null || true
+    echo "${key}=${value}" >> .env
+  done < build-info/gateway-version.env
+  echo "✅ Gateway version info added to .env"
+fi
+
+if [ -f "build-info/service-version.env" ]; then
+  echo "==> Updating .env with Service build version info ..."
+  # Append or update version info in .env
+  while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    [[ -z "$key" || "$key" =~ ^# ]] && continue
+    # Remove existing entry if present, then append new one
+    sed -i "/^${key}=/d" .env 2>/dev/null || true
+    echo "${key}=${value}" >> .env
+  done < build-info/service-version.env
+  echo "✅ Service version info added to .env"
+fi
+
 # Determine which compose file to use
 COMPOSE_FILE="docker-compose.yml"
 if [ "${USE_RUNTIME}" = "1" ]; then
