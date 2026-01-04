@@ -11,6 +11,7 @@ set -euo pipefail
 #   ./start.sh --logs               # Tail logs after start
 #   ./start.sh --clean              # Remove volumes (useful when postgres version changes)
 #   ./start.sh --setup-env          # Run setup-env.sh to create/update .env file
+#   ./start.sh --copy-env           # Copy env.example to .env only (no other operations)
 #   ./start.sh --theme-only         # Build only theme (preserves phone provider JARs)
 #   ./start.sh --phone-provider-only # Build only phone provider (preserves theme JAR)
 #   ./start.sh --quiet-build        # Less verbose build output
@@ -38,6 +39,7 @@ TAIL_LOGS=0
 USE_RUNTIME=0
 CLEAN_VOLUMES=0
 SETUP_ENV=0
+COPY_ENV_ONLY=0
 BUILD_THEME_ONLY=0
 BUILD_PHONE_PROVIDER_ONLY=0
 ARTIFACT_BUILD_ARGS=""
@@ -64,6 +66,7 @@ for arg in "$@"; do
     --runtime) USE_RUNTIME=1 ;;
     --clean) CLEAN_VOLUMES=1 ;;
     --setup-env) SETUP_ENV=1 ;;
+    --copy-env) COPY_ENV_ONLY=1 ;;
     --theme-only) BUILD_THEME_ONLY=1; ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --theme-only" ;;
     --phone-provider-only) BUILD_PHONE_PROVIDER_ONLY=1; ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --phone-provider-only" ;;
     --quiet-build) ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --quiet" ;;
@@ -110,6 +113,7 @@ for arg in "$@"; do
       echo "  --runtime            Use runtime compose (no builders)"
       echo "  --clean              Remove volumes AND images (deletes database data and cached images)"
       echo "  --setup-env          Run setup-env.sh interactively"
+      echo "  --copy-env           Copy env.example to .env only (no other operations)"
       echo "  --logs               Tail logs after start"
       echo ""
       echo "Examples:"
@@ -128,6 +132,22 @@ for arg in "$@"; do
     *) echo "Unknown arg: ${arg}" >&2; echo "Use --help for usage information" >&2; exit 2 ;;
   esac
 done
+
+# Handle copy-env-only mode (exit early)
+if [ "${COPY_ENV_ONLY}" = "1" ]; then
+  if [ ! -f "env.example" ]; then
+    echo "ERROR: env.example not found!" >&2
+    exit 1
+  fi
+  if [ -f ".env" ]; then
+    echo "==> Overwriting existing .env file from env.example ..."
+  else
+    echo "==> Creating .env file from env.example ..."
+  fi
+  cp env.example .env
+  echo "✅ .env file created/updated from env.example"
+  exit 0
+fi
 
 command -v docker >/dev/null 2>&1 || { echo "ERROR: docker not found on PATH" >&2; exit 1; }
 
