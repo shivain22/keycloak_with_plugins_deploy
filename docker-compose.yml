@@ -160,21 +160,16 @@ services:
       - --cookie-secret=${OAUTH2_PROXY_COOKIE_SECRET:-}
       - --cookie-name=_oauth2_proxy
       - --cookie-domain=${OAUTH2_PROXY_COOKIE_DOMAIN:-consul.atparui.com}
-      - --cookie-secure=true
-      - --cookie-httponly=true
+      - --cookie-secure
+      - --cookie-httponly
       - --cookie-samesite=lax
-      - --user-id-claim=preferred_username
-      - --insecure-oidc-allow-unverified-email=true
-      - --skip-provider-button=true
-      - --pass-access-token=true
-      - --set-xauthrequest=true
-      - --set-authorization-header=true
+      - --oidc-email-claim=preferred_username
+      - --insecure-oidc-allow-unverified-email
+      - --skip-provider-button
+      - --pass-access-token
+      - --set-xauthrequest
+      - --set-authorization-header
       - --whitelist-domain=consul.atparui.com
-      - --cookie-path=/
-      - --logging-level=debug
-      - --standard-logging=true
-      - --auth-logging=true
-      - --request-logging=true
     environment:
       - OAUTH2_PROXY_PROVIDER=oidc
       - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID:-gateway-web}
