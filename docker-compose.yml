@@ -169,7 +169,6 @@ services:
       - --pass-access-token=true
       - --set-xauthrequest=true
       - --set-authorization-header=true
-      - --skip-auth-routes=/v1
       - --whitelist-domain=consul.atparui.com
       - --cookie-path=/
       - --logging-level=debug
