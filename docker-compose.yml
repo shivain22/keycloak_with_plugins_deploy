@@ -163,7 +163,6 @@ services:
       - --cookie-secure=true
       - --cookie-httponly=true
       - --cookie-samesite=lax
-      - --email-domains=*
       - --user-id-claim=preferred_username
       - --insecure-oidc-allow-unverified-email=true
       - --skip-provider-button=true
