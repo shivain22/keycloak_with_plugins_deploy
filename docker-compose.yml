@@ -316,7 +316,7 @@ services:
       elasticsearch:
         condition: service_started
     environment:
-      SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod}
+      SPRING_PROFILES_ACTIVE: ${SERVICE_PROFILE:-prod,api-docs}
       # Build version information (from .env file, set during build)
       BUILD_VERSION: ${SERVICE_BUILD_VERSION:-}
       BUILD_SHORT_VERSION: ${SERVICE_BUILD_SHORT_VERSION:-}
