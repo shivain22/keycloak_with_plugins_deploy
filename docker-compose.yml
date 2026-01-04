@@ -130,13 +130,44 @@ services:
     restart: unless-stopped
 
   consul:
-    image: consul:1.15.4
+    image: consul:1.22.2
     container_name: rms-consul
     ports:
       - '${CONSUL_PORT:-8500}:8500'
       - '8300:8300'
       - '8600:8600'
     command: consul agent -dev -ui -client 0.0.0.0 -log-level=INFO
+    restart: unless-stopped
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.9.0
+    container_name: rms-oauth2-proxy
+    depends_on:
+      consul:
+        condition: service_started
+      keycloak:
+        condition: service_started
+    ports:
+      - '${OAUTH2_PROXY_PORT:-4180}:4180'
+    environment:
+      - OAUTH2_PROXY_PROVIDER=oidc
+      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID:-gateway-web}
+      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET:-M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h}
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://rmsauth.atparui.com/realms/gateway}
+      - OAUTH2_PROXY_REDIRECT_URL=${OAUTH2_PROXY_REDIRECT_URL:-https://consul.atparui.com/oauth2/callback}
+      - OAUTH2_PROXY_UPSTREAM=http://consul:8500
+      - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180
+      - OAUTH2_PROXY_COOKIE_SECRET=${OAUTH2_PROXY_COOKIE_SECRET:-}
+      - OAUTH2_PROXY_COOKIE_NAME=_oauth2_proxy
+      - OAUTH2_PROXY_COOKIE_DOMAIN=${OAUTH2_PROXY_COOKIE_DOMAIN:-consul.atparui.com}
+      - OAUTH2_PROXY_COOKIE_SECURE=true
+      - OAUTH2_PROXY_COOKIE_HTTPONLY=true
+      - OAUTH2_PROXY_COOKIE_SAMESITE=lax
+      - OAUTH2_PROXY_EMAIL_DOMAINS=*
+      - OAUTH2_PROXY_SKIP_PROVIDER_BUTTON=true
+      - OAUTH2_PROXY_PASS_ACCESS_TOKEN=true
+      - OAUTH2_PROXY_SET_XAUTHREQUEST=true
+      - OAUTH2_PROXY_SET_AUTHORIZATION_HEADER=true
     restart: unless-stopped
 
   zookeeper:
