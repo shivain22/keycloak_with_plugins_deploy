@@ -56,6 +56,7 @@ REMOVE_IMAGES=0
 FULL_CYCLE=0
 FULL_CYCLE_GATEWAY=0
 FULL_CYCLE_SERVICE=0
+FULL_CYCLE_THEME=0
 
 for arg in "$@"; do
   case "${arg}" in
@@ -83,6 +84,7 @@ for arg in "$@"; do
     --full-cycle) FULL_CYCLE=1; FORCE_BUILD=1; REMOVE_IMAGES=1 ;;
     --full-cycle-gateway) FULL_CYCLE_GATEWAY=1; FORCE_BUILD=1; REMOVE_IMAGES=1 ;;
     --full-cycle-service) FULL_CYCLE_SERVICE=1; FORCE_BUILD=1; REMOVE_IMAGES=1 ;;
+    --full-cycle-theme) FULL_CYCLE_THEME=1; FORCE_BUILD=1; BUILD_THEME_ONLY=1; ARTIFACT_BUILD_ARGS="${ARTIFACT_BUILD_ARGS} --theme-only" ;;
     --help|-h)
       echo "Usage: $0 [options]"
       echo ""
@@ -108,6 +110,7 @@ for arg in "$@"; do
       echo "  --full-cycle         Full cycle: stop+remove images+git pull+build+push+start (gateway+service)"
       echo "  --full-cycle-gateway Full cycle for gateway only: stop+remove+build+push+start"
       echo "  --full-cycle-service Full cycle for service only: stop+remove+build+push+start"
+      echo "  --full-cycle-theme   Full cycle for theme only: stop keycloak+remove theme JAR+build+restart keycloak"
       echo ""
       echo "Service options:"
       echo "  --runtime            Use runtime compose (no builders)"
@@ -125,6 +128,7 @@ for arg in "$@"; do
       echo "  $0 --full-cycle              # Full cycle: stop+remove+build+push+start (both gateway & service)"
       echo "  $0 --full-cycle-gateway      # Full cycle for gateway only"
       echo "  $0 --full-cycle-service      # Full cycle for service only"
+      echo "  $0 --full-cycle-theme        # Full cycle for theme only: stop keycloak+build+restart"
       echo "  $0 --pull-gateway            # Pull only gateway image"
       echo "  $0 --push-service            # Push only service image"
       exit 0
@@ -279,6 +283,10 @@ elif [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
   echo "==> Full cycle service mode: Stopping Service container only ..."
   docker compose -f "${COMPOSE_FILE}" stop service 2>/dev/null || true
   docker compose -f "${COMPOSE_FILE}" rm -f service 2>/dev/null || true
+elif [ "${FULL_CYCLE_THEME}" = "1" ]; then
+  echo "==> Full cycle theme mode: Stopping Keycloak container ..."
+  docker compose -f "${COMPOSE_FILE}" stop keycloak 2>/dev/null || true
+  docker compose -f "${COMPOSE_FILE}" rm -f keycloak 2>/dev/null || true
 elif [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
   echo "==> Stopping Gateway container only ..."
   docker compose -f "${COMPOSE_FILE}" stop gateway 2>/dev/null || true
@@ -357,6 +365,19 @@ if [ "${REMOVE_IMAGES}" = "1" ] || [ "${CLEAN_VOLUMES}" = "1" ] || [ "${BUILD_GA
     echo "  Cleaning up dangling Service images ..."
     docker images "${SERVICE_IMAGE}" --format "{{.ID}}" | xargs -r docker rmi 2>/dev/null || true
     echo "✅ Images removed. Fresh images will be built/pulled on next start."
+  fi
+fi
+
+# Remove theme JAR if full-cycle-theme is requested
+if [ "${FULL_CYCLE_THEME}" = "1" ]; then
+  source .env 2>/dev/null || true
+  THEME_JAR_NAME="${THEME_JAR_NAME:-keycloak-theme-for-kc-26.2-and-above.jar}"
+  echo "==> Removing theme JAR from providers directory ..."
+  if [ -f "providers/${THEME_JAR_NAME}" ]; then
+    rm -f "providers/${THEME_JAR_NAME}"
+    echo "✓ Removed ${THEME_JAR_NAME} from providers directory"
+  else
+    echo "  (Theme JAR not found in providers directory, will be built fresh)"
   fi
 fi
 
@@ -514,9 +535,15 @@ if [ "${USE_RUNTIME}" = "0" ]; then
     
     # Skip artifacts build for selective builds (only needed for Keycloak, not for app images)
     # Full cycle also skips artifacts (assumes Keycloak is already running)
-    if [ "${BUILD_GATEWAY_ONLY}" != "1" ] && [ "${BUILD_SERVICE_ONLY}" != "1" ] && [ "${FULL_CYCLE}" != "1" ] && [ "${FULL_CYCLE_GATEWAY}" != "1" ] && [ "${FULL_CYCLE_SERVICE}" != "1" ]; then
-      echo "==> Building Keycloak artifacts (providers) ..."
-      if [ "${BUILD_THEME_ONLY}" = "1" ]; then
+    # But full-cycle-theme needs to build artifacts
+    if [ "${FULL_CYCLE_THEME}" = "1" ] || ([ "${BUILD_GATEWAY_ONLY}" != "1" ] && [ "${BUILD_SERVICE_ONLY}" != "1" ] && [ "${FULL_CYCLE}" != "1" ] && [ "${FULL_CYCLE_GATEWAY}" != "1" ] && [ "${FULL_CYCLE_SERVICE}" != "1" ]); then
+      if [ "${FULL_CYCLE_THEME}" = "1" ]; then
+        echo "==> Full cycle theme: Building theme artifact ..."
+        echo "  (Git pull happens automatically during build - fresh clone from repo)"
+      else
+        echo "==> Building Keycloak artifacts (providers) ..."
+      fi
+      if [ "${BUILD_THEME_ONLY}" = "1" ] || [ "${FULL_CYCLE_THEME}" = "1" ]; then
         echo "  Building theme only (preserving phone provider JARs)"
       elif [ "${BUILD_PHONE_PROVIDER_ONLY}" = "1" ]; then
         echo "  Building phone provider only (preserving theme JAR)"
@@ -527,10 +554,15 @@ if [ "${USE_RUNTIME}" = "0" ]; then
         echo "ERROR: Artifacts build failed!" >&2
         exit 1
       }
+      if [ "${FULL_CYCLE_THEME}" = "1" ]; then
+        echo "✅ Theme artifact built successfully"
+      fi
     fi
 
-    # Handle selective builds
-    if [ "${BUILD_GATEWAY_ONLY}" = "1" ] || [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
+    # Handle selective builds (skip if full-cycle-theme, as it only builds theme artifacts)
+    if [ "${FULL_CYCLE_THEME}" = "1" ]; then
+      echo "==> Skipping apps build (full-cycle-theme only builds theme artifacts)"
+    elif [ "${BUILD_GATEWAY_ONLY}" = "1" ] || [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
       echo "==> Building and pushing Gateway Docker image only ..."
       if [ "${FULL_CYCLE_GATEWAY}" = "1" ]; then
         echo "  (Git pull happens automatically during build - fresh clone from repo)"
@@ -642,6 +674,28 @@ elif [ "${FULL_CYCLE_SERVICE}" = "1" ]; then
   echo ""
   echo "View logs with:"
   echo "  docker compose -f ${COMPOSE_FILE} logs -f service"
+  exit 0
+elif [ "${FULL_CYCLE_THEME}" = "1" ]; then
+  echo "==> Full cycle theme: Starting Keycloak container ..."
+  docker compose -f "${COMPOSE_FILE}" up -d --no-deps keycloak || {
+    echo "ERROR: Failed to start Keycloak container!" >&2
+    exit 1
+  }
+  echo "✅ Full cycle theme completed successfully!"
+  echo ""
+  echo "  ✓ Stopped Keycloak container"
+  echo "  ✓ Removed theme JAR from providers directory"
+  echo "  ✓ Git pulled latest code (via fresh clone in build)"
+  echo "  ✓ Built theme JAR"
+  echo "  ✓ Copied theme JAR to providers directory"
+  echo "  ✓ .env file created/updated"
+  echo "  ✓ Started Keycloak container"
+  echo ""
+  echo "Keycloak is starting. Check status with:"
+  echo "  docker compose -f ${COMPOSE_FILE} ps keycloak"
+  echo ""
+  echo "View logs with:"
+  echo "  docker compose -f ${COMPOSE_FILE} logs -f keycloak"
   exit 0
 elif [ "${BUILD_GATEWAY_ONLY}" = "1" ]; then
   echo "==> Starting Gateway container only (other services should already be running) ..."
