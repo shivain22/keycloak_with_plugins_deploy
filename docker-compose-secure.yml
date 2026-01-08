@@ -14,7 +14,7 @@ services:
   # ===================================================================
   
   db:
-    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-17}
     container_name: keycloak-db
     environment:
       POSTGRES_DB: ${KC_DB_NAME:-keycloak}
@@ -34,7 +34,7 @@ services:
     restart: unless-stopped
 
   rms-postgresql:
-    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-latest}
+    image: ${POSTGRES_IMAGE:-postgres}:${POSTGRES_VERSION:-17}
     container_name: rms-postgresql
     environment:
       POSTGRES_DB: ${RMS_DB_NAME:-rms_gateway}
