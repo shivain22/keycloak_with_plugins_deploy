@@ -1,9 +1,23 @@
 #!/bin/bash
 set -e
 
-# Create rms_gateway database if it doesn't exist
-# Note: CREATE DATABASE cannot run inside a transaction, so we use a shell command
+# Initialize rms_gateway database for the Gateway service
+# This script runs as postgres superuser
 echo "==> Initializing rms_gateway database..."
+echo "    Running as user: $POSTGRES_USER"
+
+# Check if rms_gateway user exists, create if not
+USER_EXISTS=$(psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_roles WHERE rolname='rms_gateway'" 2>/dev/null || echo "")
+
+if [ "$USER_EXISTS" = "1" ]; then
+    echo "✅ rms_gateway user already exists"
+else
+    echo "Creating rms_gateway user..."
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
+        CREATE ROLE rms_gateway WITH LOGIN PASSWORD 'rms_gateway';
+EOSQL
+    echo "✅ rms_gateway user created"
+fi
 
 # Check if database exists by querying pg_database
 DB_EXISTS=$(psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" -tAc "SELECT 1 FROM pg_database WHERE datname='rms_gateway'" 2>/dev/null || echo "")
@@ -12,9 +26,8 @@ if [ "$DB_EXISTS" = "1" ]; then
     echo "✅ rms_gateway database already exists"
 else
     echo "Creating rms_gateway database..."
-    # CREATE DATABASE must be run outside of a transaction block
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-        CREATE DATABASE rms_gateway;
+        CREATE DATABASE rms_gateway WITH OWNER = rms_gateway ENCODING = 'UTF8';
 EOSQL
     if [ $? -eq 0 ]; then
         echo "✅ rms_gateway database created successfully"
@@ -50,5 +63,11 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "rms_gateway" <<-EO
     ALTER USER rms_gateway SET search_path TO public;
 EOSQL
 
-echo "✅ rms_gateway database initialized successfully"
+echo "============================================="
+echo "✅ rms_gateway database initialized"
+echo ""
+echo "Gateway master database is ready."
+echo "Platform databases will be created by"
+echo "PlatformDatabaseInitializer on app startup."
+echo "============================================="
 

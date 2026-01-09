@@ -73,20 +73,22 @@ services:
       artifacts:
         condition: service_completed_successfully
     environment:
-      # POSTGRES_DB is the initial database used for running init scripts
-      # The actual databases (rms_gateway and rms_service) are created by init scripts
-      POSTGRES_DB: ${RMS_DB_NAME:-rms_gateway}
-      POSTGRES_USER: ${RMS_DB_USERNAME:-rms}
-      POSTGRES_PASSWORD: ${RMS_DB_PASSWORD:-rms}
+      # Use postgres superuser for platform database management
+      # This allows the gateway to create tenant databases dynamically
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres123}
+      # Default database for init scripts
+      POSTGRES_DB: postgres
+      # PostgreSQL initialization settings
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     ports:
       - "${RMS_POSTGRES_PORT:-5435}:5432"
     volumes:
       - rms_postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init-schemas.sql:/docker-entrypoint-initdb.d/01-init-schemas.sql:ro
       - ./docker/postgres/01-init-gateway-db.sh:/docker-entrypoint-initdb.d/02-init-gateway-db.sh:ro
-      - ./docker/postgres/02-init-service-db.sh:/docker-entrypoint-initdb.d/03-init-service-db.sh:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -339,6 +341,17 @@ services:
       SPRING_LIQUIBASE_DEFAULT_SCHEMA: ${GATEWAY_LIQUIBASE_DEFAULT_SCHEMA:-${SPRING_LIQUIBASE_DEFAULT_SCHEMA:-public}}
       # Liquibase checksum validation (set to true to clear checksums if changeset was modified)
       SPRING_LIQUIBASE_CLEAR_CHECK_SUMS: ${SPRING_LIQUIBASE_CLEAR_CHECK_SUMS:-false}
+      # ============================================
+      # Platform Database Admin Configuration
+      # Used to create tenant databases dynamically
+      # ============================================
+      PLATFORM_DB_ADMIN_HOST: ${PLATFORM_DB_ADMIN_HOST:-rms-postgresql}
+      PLATFORM_DB_ADMIN_PORT: ${PLATFORM_DB_ADMIN_PORT:-5432}
+      PLATFORM_DB_ADMIN_USER: ${PLATFORM_DB_ADMIN_USER:-postgres}
+      PLATFORM_DB_ADMIN_PASSWORD: ${POSTGRES_ADMIN_PASSWORD:-postgres123}
+      PLATFORM_DB_ADMIN_DATABASE: ${PLATFORM_DB_ADMIN_DATABASE:-postgres}
+      PLATFORM_DB_INITIALIZE_ON_STARTUP: ${PLATFORM_DB_INITIALIZE_ON_STARTUP:-true}
+      PLATFORM_DB_CREATE_DEMO_DATA: ${PLATFORM_DB_CREATE_DEMO_DATA:-true}
       # Infrastructure Services (from env.example - all use service names)
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       SPRING_CLOUD_CONSUL_HOST: ${SPRING_CLOUD_CONSUL_HOST:-consul}
@@ -381,8 +394,8 @@ services:
         condition: service_completed_successfully
       keycloak:
         condition: service_started
-      rms-postgresql:
-        condition: service_healthy
+      gateway:
+        condition: service_started
       consul:
         condition: service_started
       kafka:
@@ -398,27 +411,33 @@ services:
       BUILD_COMMIT_COUNT: ${SERVICE_BUILD_COMMIT_COUNT:-}
       BUILD_BRANCH: ${SERVICE_BUILD_BRANCH:-}
       BUILD_TIMESTAMP: ${SERVICE_BUILD_TIMESTAMP:-}
-      # Database Configuration (Service uses 'rms_service' database with 'public' schema)
-      SPRING_DATASOURCE_URL: ${SERVICE_DATASOURCE_URL:-${SPRING_DATASOURCE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service}}
-      SPRING_DATASOURCE_USERNAME: ${SERVICE_DATASOURCE_USERNAME:-${SPRING_DATASOURCE_USERNAME:-rms_service}}
-      SPRING_DATASOURCE_PASSWORD: ${SERVICE_DATASOURCE_PASSWORD:-${SPRING_DATASOURCE_PASSWORD:-rms_service}}
-      SPRING_R2DBC_URL: ${SERVICE_R2DBC_URL:-${SPRING_R2DBC_URL:-r2dbc:postgresql://rms-postgresql:5432/rms_service}}
-      SPRING_R2DBC_USERNAME: ${SERVICE_R2DBC_USERNAME:-${SPRING_R2DBC_USERNAME:-rms_service}}
-      SPRING_R2DBC_PASSWORD: ${SERVICE_R2DBC_PASSWORD:-${SPRING_R2DBC_PASSWORD:-rms_service}}
-      # Custom R2DBC config variables used by MultiTenantDatabaseConfig (Service uses database 'rms_service')
-      # Use SERVICE_ prefixed variables to avoid conflicts with gateway's DB_* variables
-      DB_HOST: ${SERVICE_DB_HOST:-rms-postgresql}
-      DB_PORT: ${SERVICE_DB_PORT:-5432}
-      DB_NAME: ${SERVICE_DB_NAME:-rms_service}
-      DB_USERNAME: ${SERVICE_DB_USERNAME:-rms_service}
-      DB_PASSWORD: ${SERVICE_DB_PASSWORD:-rms_service}
-      SPRING_LIQUIBASE_URL: ${SERVICE_LIQUIBASE_URL:-${SPRING_LIQUIBASE_URL:-jdbc:postgresql://rms-postgresql:5432/rms_service?currentSchema=public}}
-      SPRING_LIQUIBASE_USER: ${SERVICE_LIQUIBASE_USER:-${SPRING_LIQUIBASE_USER:-rms_service}}
-      SPRING_LIQUIBASE_PASSWORD: ${SERVICE_LIQUIBASE_PASSWORD:-${SPRING_LIQUIBASE_PASSWORD:-rms_service}}
-      # Service uses separate database 'rms_service' with default 'public' schema
-      SPRING_LIQUIBASE_DEFAULT_SCHEMA: ${SERVICE_LIQUIBASE_DEFAULT_SCHEMA:-${SPRING_LIQUIBASE_DEFAULT_SCHEMA:-public}}
-      # Liquibase checksum validation (set to true to clear checksums if changeset was modified)
-      SPRING_LIQUIBASE_CLEAR_CHECK_SUMS: ${SPRING_LIQUIBASE_CLEAR_CHECK_SUMS:-false}
+      # ============================================
+      # MULTI-TENANT DATABASE CONFIGURATION
+      # rms-service does NOT have its own static database.
+      # Instead, it fetches tenant database config from Gateway
+      # dynamically based on the X-Tenant-ID header in requests.
+      # ============================================
+      MULTI_TENANT_ENABLED: ${MULTI_TENANT_ENABLED:-true}
+      MULTI_TENANT_TENANT_ID_HEADER: ${MULTI_TENANT_TENANT_ID_HEADER:-X-Tenant-ID}
+      MULTI_TENANT_JWT_TENANT_CLAIM: ${MULTI_TENANT_JWT_TENANT_CLAIM:-tenant_id}
+      # Gateway URL for fetching tenant database config
+      MULTI_TENANT_GATEWAY_BASE_URL: ${MULTI_TENANT_GATEWAY_BASE_URL:-http://gateway:8080}
+      MULTI_TENANT_GATEWAY_TENANT_CONFIG_ENDPOINT: ${MULTI_TENANT_GATEWAY_TENANT_CONFIG_ENDPOINT:-/api/tenants/{tenantId}/database-config}
+      MULTI_TENANT_GATEWAY_CONNECTION_TIMEOUT: ${MULTI_TENANT_GATEWAY_CONNECTION_TIMEOUT:-5000}
+      MULTI_TENANT_GATEWAY_READ_TIMEOUT: ${MULTI_TENANT_GATEWAY_READ_TIMEOUT:-10000}
+      # Connection pool settings per tenant
+      MULTI_TENANT_CONNECTION_CACHE_TTL: ${MULTI_TENANT_CONNECTION_CACHE_TTL:-3600}
+      MULTI_TENANT_CONNECTION_MAX_POOL_SIZE: ${MULTI_TENANT_CONNECTION_MAX_POOL_SIZE:-20}
+      MULTI_TENANT_CONNECTION_MIN_POOL_SIZE: ${MULTI_TENANT_CONNECTION_MIN_POOL_SIZE:-5}
+      # Fallback configuration (optional - use default tenant if no tenant header)
+      MULTI_TENANT_FALLBACK_ENABLED: ${MULTI_TENANT_FALLBACK_ENABLED:-false}
+      MULTI_TENANT_FALLBACK_DEFAULT_TENANT_ID: ${MULTI_TENANT_FALLBACK_DEFAULT_TENANT_ID:-rms_default}
+      # ============================================
+      # LIQUIBASE DISABLED - Gateway handles DB migrations
+      # When gateway creates a tenant database, it applies
+      # Liquibase from the service repository to set up schema.
+      # ============================================
+      SPRING_LIQUIBASE_ENABLED: false
       # Infrastructure Services (from env.example - all use service names)
       SPRING_KAFKA_BOOTSTRAP_SERVERS: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:-kafka:9092}
       SPRING_CLOUD_CONSUL_HOST: ${SPRING_CLOUD_CONSUL_HOST:-consul}
@@ -435,10 +454,8 @@ services:
       SPRING_CLOUD_CONSUL_DISCOVERY_REGISTER_HEALTH_CHECK: ${SPRING_CLOUD_CONSUL_DISCOVERY_REGISTER_HEALTH_CHECK:-false}
       SPRING_ELASTICSEARCH_URIS: ${SPRING_ELASTICSEARCH_URIS:-http://elasticsearch:9200}
       SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES: ${SPRING_DATA_ELASTICSEARCH_CLUSTER_NODES:-elasticsearch:9200}
-      # OAuth2/OIDC Configuration
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_OIDC_ISSUER_URI: ${KEYCLOAK_SERVICE_ISSUER_URI:-${KEYCLOAK_ISSUER_URI:-https://rmsauth.atparui.com/realms/${SERVICE_REALM:-rms-service}}}
-      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_ID: ${SERVICE_CLIENT_ID:-rms-service-web}
-      SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_OIDC_CLIENT_SECRET: ${SERVICE_CLIENT_SECRET:-B1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV}
+      # OAuth2/OIDC Configuration - Dynamic per tenant (via Gateway)
+      # Service will use tenant-specific issuer URI from Gateway response
       SERVER_PORT: 8080
     ports:
       - "${SERVICE_HTTP_PORT:-9294}:8080"
