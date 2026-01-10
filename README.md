@@ -18,12 +18,20 @@ Keycloak waits for Postgres using a Postgres `healthcheck` + `depends_on: condit
 
 **Option A: Using the start script (recommended)**
 
-- **Linux/macOS:** `./start.sh`
-- **Windows:** `.\start.ps1`
+```bash
+./start.sh
+```
 
 Optional flags:
-- `--rebuild` / `-rebuild`: Force rebuild of artifacts image
-- `--logs` / `-logs`: Tail Keycloak logs after start
+- `--build`: Force build of all components
+- `--no-build`: Skip build, just start services
+- `--runtime`: Use runtime compose (no builders)
+- `--logs`: Tail logs after start
+- `--clean`: Remove volumes (useful when postgres version changes)
+- `--theme-only`: Build only theme
+- `--help`: Show full help
+
+See `./start.sh --help` for all available options.
 
 **Option B: Manual start**
 

@@ -22,7 +22,6 @@ Your Jenkins pipeline has been configured to:
 
 ### 3. Created Automation Scripts
 - `scripts/create-jenkins-pipeline.py` - Python script (cross-platform)
-- `scripts/create-jenkins-pipeline.ps1` - PowerShell script (Windows)
 - `scripts/create-jenkins-pipeline.sh` - Bash script (Linux/macOS)
 - `scripts/setup-jenkins-pipeline.sh` - Interactive setup script
 
@@ -51,12 +50,12 @@ chmod +x scripts/setup-jenkins-pipeline.sh
 ./scripts/setup-jenkins-pipeline.sh
 ```
 
-### Option 3: Use PowerShell (Windows)
+### Option 3: Use Bash Script (Linux/macOS)
 
-```powershell
-.\scripts\create-jenkins-pipeline.ps1 `
-    -JenkinsUrl "http://your-jenkins-server:8080" `
-    -Username "your-username" `
+```bash
+./scripts/create-jenkins-pipeline.sh \
+    --jenkins-url "http://your-jenkins-server:8080" \
+    --username "your-username" \
     -Password "your-api-token" `
     -JobName "Keycloak-Deployment"
 ```

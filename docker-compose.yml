@@ -155,9 +155,9 @@ services:
       - --upstream=http://consul:8500
       - --http-address=0.0.0.0:4180
       - --provider=oidc
-      - --client-id=${OAUTH2_PROXY_CLIENT_ID:-gateway-web}
-      - --client-secret=${OAUTH2_PROXY_CLIENT_SECRET:-M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h}
-      - --oidc-issuer-url=${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://auth.atparui.com/realms/gateway}
+      - --client-id=${OAUTH2_PROXY_CLIENT_ID:-consul}
+      - --client-secret=${OAUTH2_PROXY_CLIENT_SECRET:-C0nSuL@InFrA2024SecureKey!}
+      - --oidc-issuer-url=${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://auth.atparui.com/realms/atpar-infra}
       - --redirect-url=${OAUTH2_PROXY_REDIRECT_URL:-https://consul.atparui.com/oauth2/callback}
       - --cookie-secret=${OAUTH2_PROXY_COOKIE_SECRET:-}
       - --cookie-name=_oauth2_proxy
@@ -174,9 +174,9 @@ services:
       - --whitelist-domain=consul.atparui.com
     environment:
       - OAUTH2_PROXY_PROVIDER=oidc
-      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID:-gateway-web}
-      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET:-M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h}
-      - OAUTH2_PROXY_OIDC_ISSUER_URL=${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://auth.atparui.com/realms/gateway}
+      - OAUTH2_PROXY_CLIENT_ID=${OAUTH2_PROXY_CLIENT_ID:-consul}
+      - OAUTH2_PROXY_CLIENT_SECRET=${OAUTH2_PROXY_CLIENT_SECRET:-C0nSuL@InFrA2024SecureKey!}
+      - OAUTH2_PROXY_OIDC_ISSUER_URL=${OAUTH2_PROXY_OIDC_ISSUER_URL:-https://auth.atparui.com/realms/atpar-infra}
       - OAUTH2_PROXY_REDIRECT_URL=${OAUTH2_PROXY_REDIRECT_URL:-https://consul.atparui.com/oauth2/callback}
       - OAUTH2_PROXY_UPSTREAM=http://consul:8500
       - OAUTH2_PROXY_HTTP_ADDRESS=0.0.0.0:4180

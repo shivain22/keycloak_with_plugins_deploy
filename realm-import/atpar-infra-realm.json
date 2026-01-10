@@ -162,9 +162,12 @@
       "adminUrl": "https://jenkins.atparui.com",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "1800",
-        "post.logout.redirect.uris": "https://jenkins.atparui.com,http://localhost:8180"
+        "access.token.lifespan": "1800"
       },
+      "postLogoutRedirectUris": [
+        "https://jenkins.atparui.com",
+        "http://localhost:8180"
+      ],
       "defaultClientScopes": [
         "openid",
         "profile",
@@ -209,9 +212,11 @@
       "adminUrl": "https://consul.atparui.com",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "1800",
-        "post.logout.redirect.uris": "https://consul.atparui.com"
+        "access.token.lifespan": "1800"
       },
+      "postLogoutRedirectUris": [
+        "https://consul.atparui.com"
+      ],
       "defaultClientScopes": [
         "openid",
         "profile",
@@ -253,9 +258,11 @@
       "adminUrl": "https://grafana.atparui.com",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "1800",
-        "post.logout.redirect.uris": "https://grafana.atparui.com"
+        "access.token.lifespan": "1800"
       },
+      "postLogoutRedirectUris": [
+        "https://grafana.atparui.com"
+      ],
       "defaultClientScopes": [
         "openid",
         "profile",
@@ -299,9 +306,11 @@
       "adminUrl": "https://argocd.atparui.com",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "1800",
-        "post.logout.redirect.uris": "https://argocd.atparui.com"
+        "access.token.lifespan": "1800"
       },
+      "postLogoutRedirectUris": [
+        "https://argocd.atparui.com"
+      ],
       "defaultClientScopes": [
         "openid",
         "profile",

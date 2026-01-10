@@ -10,16 +10,7 @@ This means Maven is using a Java version other than Java 21, but your project re
 
 ## Solution
 
-### Option 1: Use the wrapper script (Recommended)
-Use the `build-with-java21.sh` script to automatically set Java 21 before running Maven:
-
-```bash
-./build-with-java21.sh clean package
-./build-with-java21.sh clean install
-./build-with-java21.sh clean package jib:build
-```
-
-### Option 2: Source the setup script manually
+### Option 1: Source the setup script manually (Recommended)
 Before running Maven commands, source the setup script:
 
 ```bash
@@ -31,7 +22,7 @@ source set-java21.sh
 mvn clean package
 ```
 
-### Option 3: Set JAVA_HOME manually
+### Option 2: Set JAVA_HOME manually
 If the automatic detection doesn't work, set JAVA_HOME manually:
 
 ```bash

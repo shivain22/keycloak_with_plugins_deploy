@@ -28,12 +28,6 @@ chmod +x update-realm-config.sh
 ./update-realm-config.sh realm-import/rms-service-realm.json
 ```
 
-**Windows (PowerShell):**
-```powershell
-.\update-realm-config.ps1 -RealmFile "realm-import\gateway-realm.json"
-.\update-realm-config.ps1 -RealmFile "realm-import\rms-service-realm.json"
-```
-
 **With custom Keycloak URL:**
 ```bash
 KEYCLOAK_URL=http://your-keycloak:9292 ./update-realm-config.sh realm-import/gateway-realm.json
@@ -132,7 +126,6 @@ After updating, verify the changes:
 ## Scripts Provided
 
 - `update-realm-config.sh` - Bash script for Linux/Mac
-- `update-realm-config.ps1` - PowerShell script for Windows
 
 Both scripts:
 - Get admin token automatically

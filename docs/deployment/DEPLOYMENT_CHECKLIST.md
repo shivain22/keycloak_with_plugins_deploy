@@ -6,9 +6,7 @@ This document verifies that all scripts and configurations are ready for deploym
 
 ### 1. Scripts
 - ✅ `start.sh` - Bash script for Linux/macOS/WSL
-- ✅ `start.ps1` - PowerShell script for Windows
 - ✅ `fresh-start.sh` - Fresh start with volume cleanup (Bash)
-- ✅ `fresh-start.ps1` - Fresh start with volume cleanup (PowerShell)
 - ✅ All scripts check for Docker availability
 - ✅ All scripts use relative paths (no hardcoded absolute paths)
 - ✅ All scripts handle errors gracefully

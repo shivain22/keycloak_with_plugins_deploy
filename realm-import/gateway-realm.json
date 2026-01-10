@@ -169,9 +169,13 @@
       "adminUrl": "http://localhost:9293",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000,https://rmsdashboard.atparui.com"
+        "access.token.lifespan": "300"
       },
+      "postLogoutRedirectUris": [
+        "http://localhost:9000",
+        "https://rmsdashboard.atparui.com",
+        "https://rmsgateway.atparui.com"
+      ],
       "defaultClientScopes": [
         "openid",
         "profile",
@@ -219,9 +223,12 @@
       "adminUrl": "http://localhost:9293",
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000,https://rmsdashboard.atparui.com"
+        "access.token.lifespan": "300"
       },
+      "postLogoutRedirectUris": [
+        "http://localhost:9000",
+        "https://rmsdashboard.atparui.com"
+      ],
       "defaultClientScopes": [
         "openid",
         "profile",
