@@ -63,7 +63,7 @@
       "description": "OIDC client for Jenkins CI/CD authentication",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "${JENKINS_CLIENT_SECRET}",
+      "secret": "AtP4rJ3nK1nSS3cR3t2024SecureKey",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,

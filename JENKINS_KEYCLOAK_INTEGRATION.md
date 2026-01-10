@@ -39,7 +39,7 @@ The `atpar-jenkins` client is pre-configured in `realm-import/atpar-jenkins-real
 
 ```
 Client ID: atpar-jenkins
-Client Secret: AtP4r_J3nK1nS_S3cR3t_2024!@#
+Client Secret: AtP4rJ3nK1nSS3cR3t2024SecureKey
 Redirect URIs: https://jenkins.atparui.com/securityRealm/finishLogin
 ```
 
@@ -54,7 +54,7 @@ Redirect URIs: https://jenkins.atparui.com/securityRealm/finishLogin
    | Setting | Value |
    |---------|-------|
    | **Client ID** | `atpar-jenkins` |
-   | **Client Secret** | `AtP4r_J3nK1nS_S3cR3t_2024!@#` |
+   | **Client Secret** | `AtP4rJ3nK1nSS3cR3t2024SecureKey` |
    | **Configuration mode** | Automatic configuration |
    | **Well-known configuration endpoint** | `https://auth.atparui.com/realms/atpar-jenkins/.well-known/openid-configuration` |
    | **User name field name** | `preferred_username` |
@@ -128,7 +128,7 @@ Add these to your `.env` file for reference:
 ```env
 # Jenkins Keycloak Integration
 JENKINS_KEYCLOAK_CLIENT_ID=atpar-jenkins
-JENKINS_KEYCLOAK_CLIENT_SECRET=AtP4r_J3nK1nS_S3cR3t_2024!@#
+JENKINS_KEYCLOAK_CLIENT_SECRET=AtP4rJ3nK1nSS3cR3t2024SecureKey
 JENKINS_KEYCLOAK_REALM=atpar-jenkins
 JENKINS_KEYCLOAK_AUTH_URL=https://auth.atparui.com
 JENKINS_KEYCLOAK_DISCOVERY_URL=https://auth.atparui.com/realms/atpar-jenkins/.well-known/openid-configuration
