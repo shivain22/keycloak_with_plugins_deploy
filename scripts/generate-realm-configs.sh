@@ -61,7 +61,7 @@ case "${ENV}" in
     GATEWAY_URL="${GATEWAY_URL:-https://rmsgateway.atparui.com}"
     SERVICE_URL="${SERVICE_URL:-https://rmsservice.atparui.com}"
     FRONTEND_URL="${FRONTEND_URL:-https://rmsdashboard.atparui.com}"
-    KEYCLOAK_URL="${KEYCLOAK_URL:-https://rmsauth.atparui.com}"
+    KEYCLOAK_URL="${KEYCLOAK_URL:-https://auth.atparui.com}"
     GATEWAY_URL_PROD="${GATEWAY_URL_PROD:-https://rmsgateway.atparui.com}"
     SERVICE_URL_PROD="${SERVICE_URL_PROD:-https://rmsservice.atparui.com}"
     DASHBOARD_URL_PROD="${DASHBOARD_URL_PROD:-https://rmsdashboard.atparui.com}"

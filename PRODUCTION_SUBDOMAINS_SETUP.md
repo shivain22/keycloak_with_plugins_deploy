@@ -9,7 +9,7 @@ The following subdomains are configured for production:
 - **rmsgateway.atparui.com** - Gateway service
 - **rmsservice.atparui.com** - Service/API
 - **rmsdashboard.atparui.com** - Frontend/Dashboard
-- **rmsauth.atparui.com** - Keycloak authentication server
+- **auth.atparui.com** - Keycloak authentication server
 
 ## Configuration Files
 
@@ -22,13 +22,13 @@ The following variables control the production URLs:
 GATEWAY_DOMAIN=rmsgateway.atparui.com
 SERVICE_DOMAIN=rmsservice.atparui.com
 DASHBOARD_DOMAIN=rmsdashboard.atparui.com
-KEYCLOAK_DOMAIN=rmsauth.atparui.com
+KEYCLOAK_DOMAIN=auth.atparui.com
 
 # Production URLs (HTTPS) - no ports needed (handled by reverse proxy)
 GATEWAY_URL_PROD=https://rmsgateway.atparui.com
 SERVICE_URL_PROD=https://rmsservice.atparui.com
 DASHBOARD_URL_PROD=https://rmsdashboard.atparui.com
-KEYCLOAK_URL_PROD=https://rmsauth.atparui.com
+KEYCLOAK_URL_PROD=https://auth.atparui.com
 ```
 
 ### 2. Realm Configuration Templates
@@ -76,7 +76,7 @@ When setting up your reverse proxy (nginx/apache), ensure:
 1. **rmsgateway.atparui.com** → Gateway service (port from your server)
 2. **rmsservice.atparui.com** → Service/API (port from your server)
 3. **rmsdashboard.atparui.com** → Frontend/Dashboard (port from your server)
-4. **rmsauth.atparui.com** → Keycloak (port 8080 or your configured port)
+4. **auth.atparui.com** → Keycloak (port 8080 or your configured port)
 
 ## Updating Configuration
 

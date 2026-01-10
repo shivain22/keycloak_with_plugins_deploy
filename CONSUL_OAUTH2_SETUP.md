@@ -4,7 +4,7 @@
 This guide explains how to set up OAuth2 Proxy to secure the Consul UI at `https://consul.atparui.com` using Keycloak authentication.
 
 ## Prerequisites
-- Keycloak running at `https://rmsauth.atparui.com`
+- Keycloak running at `https://auth.atparui.com`
 - Gateway realm configured with `gateway-web` client
 - SSL certificate for `consul.atparui.com` (already configured via Certbot)
 - Consul running in Docker container
@@ -34,7 +34,7 @@ Copy the generated value and add it to your `.env` file as `OAUTH2_PROXY_COOKIE_
 
 The `gateway-web` client in the `gateway` realm needs to have the following redirect URI:
 
-1. Log into Keycloak Admin Console at `https://rmsauth.atparui.com`
+1. Log into Keycloak Admin Console at `https://auth.atparui.com`
 2. Navigate to: **Clients** → **gateway-web** → **Settings**
 3. Add to **Valid Redirect URIs**:
    ```
@@ -56,7 +56,7 @@ Edit your `.env` file and set the following:
 OAUTH2_PROXY_PORT=4180
 OAUTH2_PROXY_CLIENT_ID=gateway-web
 OAUTH2_PROXY_CLIENT_SECRET=M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h
-OAUTH2_PROXY_OIDC_ISSUER_URL=https://rmsauth.atparui.com/realms/gateway
+OAUTH2_PROXY_OIDC_ISSUER_URL=https://auth.atparui.com/realms/gateway
 OAUTH2_PROXY_REDIRECT_URL=https://consul.atparui.com/oauth2/callback
 OAUTH2_PROXY_COOKIE_SECRET=<your-generated-secret-here>
 OAUTH2_PROXY_COOKIE_DOMAIN=consul.atparui.com

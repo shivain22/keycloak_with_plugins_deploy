@@ -26,6 +26,18 @@
       {
         "name": "user",
         "description": "Default user role"
+      },
+      {
+        "name": "jenkins-admin",
+        "description": "Jenkins administrator role - full access to Jenkins"
+      },
+      {
+        "name": "jenkins-developer",
+        "description": "Jenkins developer role - can build and view jobs"
+      },
+      {
+        "name": "jenkins-viewer",
+        "description": "Jenkins viewer role - read-only access"
       }
     ]
   },
@@ -45,7 +57,77 @@
         }
       ],
       "realmRoles": [
-        "ROLE_ADMIN"
+        "ROLE_ADMIN",
+        "jenkins-admin"
+      ],
+      "requiredActions": [],
+      "attributes": {
+        "skipPhoneVerification": ["true"]
+      }
+    },
+    {
+      "username": "platformadmin",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Platform",
+      "lastName": "Administrator",
+      "email": "platformadmin@atparui.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "PlatformAdmin123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "ROLE_ADMIN",
+        "jenkins-admin"
+      ],
+      "requiredActions": [],
+      "attributes": {
+        "skipPhoneVerification": ["true"]
+      }
+    },
+    {
+      "username": "developer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dev",
+      "lastName": "User",
+      "email": "developer@atparui.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Developer123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "jenkins-developer"
+      ],
+      "requiredActions": [],
+      "attributes": {
+        "skipPhoneVerification": ["true"]
+      }
+    },
+    {
+      "username": "viewer",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "View",
+      "lastName": "User",
+      "email": "viewer@atparui.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Viewer123!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "user",
+        "jenkins-viewer"
       ],
       "requiredActions": [],
       "attributes": {
@@ -212,6 +294,53 @@
         "phone",
         "offline_access",
         "microprofile-jwt"
+      ]
+    },
+    {
+      "clientId": "jenkins",
+      "name": "Jenkins CI/CD",
+      "description": "OIDC client for Jenkins authentication",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "J3nK1nS_S3cR3t_K3y_2024!@#",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "protocol": "openid-connect",
+      "baseUrl": "https://jenkins.atparui.com",
+      "rootUrl": "https://jenkins.atparui.com",
+      "adminUrl": "https://jenkins.atparui.com",
+      "attributes": {
+        "pkce.code.challenge.method": "",
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "https://jenkins.atparui.com,http://localhost:8080"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "web-origins",
+        "role_list",
+        "roles",
+        "gateway-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "https://jenkins.atparui.com",
+        "http://localhost:8080",
+        "*"
+      ],
+      "redirectUris": [
+        "https://jenkins.atparui.com/securityRealm/finishLogin",
+        "http://localhost:8080/securityRealm/finishLogin",
+        "https://jenkins.atparui.com/*",
+        "http://localhost:8080/*"
       ]
     }
   ],

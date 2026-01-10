@@ -74,7 +74,7 @@ When setting up your reverse proxy (nginx/apache) for production:
 
 1. **rmsgateway.atparui.com** → Map to host port `9293` (or your configured `GATEWAY_HTTP_PORT`)
 2. **rmsservice.atparui.com** → Map to host port `9294` (or your configured `SERVICE_HTTP_PORT`)
-3. **rmsauth.atparui.com** → Map to host port `9292` (or your configured `KEYCLOAK_HTTP_PORT`)
+3. **auth.atparui.com** → Map to host port `9292` (or your configured `KEYCLOAK_HTTP_PORT`)
 4. **rmsdashboard.atparui.com** → Map to host port `9293` (same as gateway, since gateway serves the UI)
 
 ### Important for Production

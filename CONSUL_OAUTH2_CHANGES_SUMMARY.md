@@ -15,7 +15,7 @@
   - `OAUTH2_PROXY_PORT=4180`
   - `OAUTH2_PROXY_CLIENT_ID=gateway-web`
   - `OAUTH2_PROXY_CLIENT_SECRET=M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h`
-  - `OAUTH2_PROXY_OIDC_ISSUER_URL=https://rmsauth.atparui.com/realms/gateway`
+  - `OAUTH2_PROXY_OIDC_ISSUER_URL=https://auth.atparui.com/realms/gateway`
   - `OAUTH2_PROXY_REDIRECT_URL=https://consul.atparui.com/oauth2/callback`
   - `OAUTH2_PROXY_COOKIE_SECRET=` (must be generated)
   - `OAUTH2_PROXY_COOKIE_DOMAIN=consul.atparui.com`

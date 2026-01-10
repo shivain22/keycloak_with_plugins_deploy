@@ -6,7 +6,7 @@ This plan outlines how to expose and secure the Consul UI at `https://consul.atp
 ## Current Setup Analysis
 
 ### Existing Infrastructure
-- **Keycloak**: Running in Docker, exposed via nginx at `https://rmsauth.atparui.com`
+- **Keycloak**: Running in Docker, exposed via nginx at `https://auth.atparui.com`
 - **Consul**: Running in Docker container `rms-consul`, exposing port `8500` on host
 - **Nginx**: Running on the server as reverse proxy
 - **Consul UI**: Currently accessible at `http://localhost:8500/ui` (unsecured)

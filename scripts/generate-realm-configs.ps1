@@ -61,7 +61,7 @@ switch ($Env) {
         $GATEWAY_URL = if ($env:GATEWAY_URL) { $env:GATEWAY_URL } else { "https://rmsgateway.atparui.com" }
         $SERVICE_URL = if ($env:SERVICE_URL) { $env:SERVICE_URL } else { "https://rmsservice.atparui.com" }
         $FRONTEND_URL = if ($env:FRONTEND_URL) { $env:FRONTEND_URL } else { "https://rmsdashboard.atparui.com" }
-        $KEYCLOAK_URL = if ($env:KEYCLOAK_URL) { $env:KEYCLOAK_URL } else { "https://rmsauth.atparui.com" }
+        $KEYCLOAK_URL = if ($env:KEYCLOAK_URL) { $env:KEYCLOAK_URL } else { "https://auth.atparui.com" }
         $GATEWAY_URL_PROD = if ($env:GATEWAY_URL_PROD) { $env:GATEWAY_URL_PROD } else { "https://rmsgateway.atparui.com" }
         $SERVICE_URL_PROD = if ($env:SERVICE_URL_PROD) { $env:SERVICE_URL_PROD } else { "https://rmsservice.atparui.com" }
         $DASHBOARD_URL_PROD = if ($env:DASHBOARD_URL_PROD) { $env:DASHBOARD_URL_PROD } else { "https://rmsdashboard.atparui.com" }
