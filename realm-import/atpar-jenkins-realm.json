@@ -1,15 +1,15 @@
 {
-  "realm": "rms-service",
+  "realm": "atpar-jenkins",
   "enabled": true,
-  "displayName": "RMS Service Realm",
-  "registrationAllowed": true,
+  "displayName": "ATPAR Jenkins Realm",
+  "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "rememberMe": true,
   "sslRequired": "external",
-  "accessTokenLifespan": 300,
+  "accessTokenLifespan": 1800,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "loginTheme": "rms-auth-theme-plugin",
@@ -19,33 +19,36 @@
   "roles": {
     "realm": [
       {
-        "name": "ROLE_ADMIN",
-        "description": "Administrator role for RMS service operations",
-        "composite": false
+        "name": "jenkins-admin",
+        "description": "Jenkins administrator role - full access to Jenkins"
       },
       {
-        "name": "user",
-        "description": "Default user role"
+        "name": "jenkins-developer",
+        "description": "Jenkins developer role - can build and view jobs"
+      },
+      {
+        "name": "jenkins-viewer",
+        "description": "Jenkins viewer role - read-only access"
       }
     ]
   },
   "users": [
     {
-      "username": "rmsadmin",
+      "username": "admin",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "RMS",
+      "firstName": "Jenkins",
       "lastName": "Administrator",
-      "email": "rmsadmin@rms-service.local",
+      "email": "admin@atparui.com",
       "credentials": [
         {
           "type": "password",
-          "value": "rmsadmin",
+          "value": "AzBy791833!",
           "temporary": false
         }
       ],
       "realmRoles": [
-        "ROLE_ADMIN"
+        "jenkins-admin"
       ],
       "requiredActions": [],
       "attributes": {
@@ -55,56 +58,24 @@
   ],
   "clients": [
     {
-      "clientId": "rms-service-admin-client",
-      "name": "RMS Service Admin Client",
-      "description": "Service account client for RMS service to manage realms via Admin API",
+      "clientId": "atpar-jenkins",
+      "name": "ATPAR Jenkins Client",
+      "description": "OIDC client for Jenkins CI/CD authentication",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "A9bC2dE4fG6hI8jK0lM2nO4pQ6rS8tU",
-      "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "publicClient": false,
-      "protocol": "openid-connect",
-      "attributes": {
-        "access.token.lifespan": "300"
-      },
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "web-origins",
-        "role_list",
-        "roles",
-        "rms-roles"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access",
-        "microprofile-jwt"
-      ]
-    },
-    {
-      "clientId": "rms-service-web",
-      "name": "RMS Service Web Client",
-      "description": "Web client for RMS service application",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "B1cD3eF5gH7iJ9kL1mN3oP5qR7sT9uV",
+      "secret": "AtP4r_J3nK1nS_S3cR3t_2024!@#",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "${SERVICE_URL}",
-      "rootUrl": "${SERVICE_URL}",
-      "adminUrl": "${SERVICE_URL}",
+      "baseUrl": "https://jenkins.atparui.com",
+      "rootUrl": "https://jenkins.atparui.com",
+      "adminUrl": "https://jenkins.atparui.com",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "${FRONTEND_URL},${DASHBOARD_URL_PROD}"
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "https://jenkins.atparui.com,http://localhost:8080"
       },
       "defaultClientScopes": [
         "openid",
@@ -113,7 +84,7 @@
         "web-origins",
         "role_list",
         "roles",
-        "rms-roles"
+        "jenkins-roles"
       ],
       "optionalClientScopes": [
         "address",
@@ -122,60 +93,15 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "${SERVICE_URL}",
-        "${FRONTEND_URL}",
-        "${SERVICE_URL_PROD}",
-        "${DASHBOARD_URL_PROD}"
+        "https://jenkins.atparui.com",
+        "http://localhost:8080",
+        "*"
       ],
       "redirectUris": [
-        "${FRONTEND_URL}/login/oauth2/code/oidc",
-        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
-      ]
-    },
-    {
-      "clientId": "rms-service-mobile",
-      "name": "RMS Service Mobile Client",
-      "description": "Mobile client for RMS service application with PKCE",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "C2dE4fG6hI8jK0lM2nO4pQ6rS8tU0vW",
-      "publicClient": false,
-      "standardFlowEnabled": true,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
-      "protocol": "openid-connect",
-      "baseUrl": "${SERVICE_URL}",
-      "rootUrl": "${SERVICE_URL}",
-      "adminUrl": "${SERVICE_URL}",
-      "attributes": {
-        "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "${FRONTEND_URL},${DASHBOARD_URL_PROD}"
-      },
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "web-origins",
-        "role_list",
-        "roles",
-        "rms-roles"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access",
-        "microprofile-jwt"
-      ],
-      "webOrigins": [
-        "${SERVICE_URL}",
-        "${FRONTEND_URL}",
-        "${SERVICE_URL_PROD}",
-        "${DASHBOARD_URL_PROD}"
-      ],
-      "redirectUris": [
-        "${FRONTEND_URL}/login/oauth2/code/oidc",
-        "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc"
+        "https://jenkins.atparui.com/securityRealm/finishLogin",
+        "http://localhost:8080/securityRealm/finishLogin",
+        "https://jenkins.atparui.com/*",
+        "http://localhost:8080/*"
       ]
     }
   ],
@@ -314,8 +240,8 @@
       ]
     },
     {
-      "name": "rms-roles",
-      "description": "Custom scope to add roles as flat array in token claims for RMS service",
+      "name": "jenkins-roles",
+      "description": "Custom scope to add roles as flat array in token claims for Jenkins",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",
@@ -348,77 +274,12 @@
     "roles",
     "web-origins",
     "acr",
-    "rms-roles"
+    "jenkins-roles"
   ],
   "defaultOptionalClientScopes": [
     "offline_access",
     "address",
     "phone",
     "microprofile-jwt"
-  ],
-  "authenticationFlows": [
-    {
-      "alias": "browser with phone auto registration",
-      "description": "Browser flow with Phone Username Password Form with Auto Registration",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticator": "auth-cookie",
-          "requirement": "ALTERNATIVE",
-          "priority": 10,
-          "authenticatorFlow": false
-        },
-        {
-          "authenticator": "identity-provider-redirector",
-          "requirement": "ALTERNATIVE",
-          "priority": 20,
-          "authenticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticatorFlow": true,
-          "requirement": "ALTERNATIVE",
-          "priority": 30,
-          "flowAlias": "forms"
-        }
-      ]
-    },
-    {
-      "alias": "forms",
-      "description": "Forms sub-flow",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticator": "auth-phone-auto-reg-form",
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "authenticatorFlow": false,
-          "userSetupAllowed": false,
-          "authenticatorConfig": "phone-auto-reg-config"
-        }
-      ]
-    }
-  ],
-  "authenticatorConfig": [
-    {
-      "alias": "phone-auto-reg-config",
-      "config": {
-        "enableAutoRegistration": "true",
-        "autoRegPhoneAsUsername": "true",
-        "loginWithPhoneVerify": "true",
-        "loginWithPhoneNumber": "true"
-      }
-    }
-  ],
-  "browserFlow": "browser with phone auto registration",
-  "registrationFlow": "registration",
-  "directGrantFlow": "direct grant",
-  "resetCredentialsFlow": "reset credentials",
-  "clientAuthenticationFlow": "clients",
-  "dockerAuthenticationFlow": "docker auth"
+  ]
 }
-

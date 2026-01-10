@@ -127,6 +127,7 @@
         "${GATEWAY_URL_PROD}",
         "${DASHBOARD_URL_PROD}",
         "https://rmsgateway.atparui.com",
+        "https://consul.atparui.com",
         "*"
       ],
       "redirectUris": [
@@ -134,6 +135,7 @@
         "${DASHBOARD_URL_PROD}/login/oauth2/code/oidc",
         "https://rmsgateway.atparui.com",
         "https://rmsgateway.atparui.com/login/oauth2/code/oidc",
+        "https://consul.atparui.com/oauth2/callback",
         "*"
       ]
     },

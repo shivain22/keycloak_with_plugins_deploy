@@ -1,28 +1,22 @@
 # Jenkins Keycloak Integration Guide
 
-This guide explains how to configure Jenkins to use Keycloak for authentication, using the same `gateway` realm so that users can log in to **both Jenkins and the Gateway application** with the same credentials.
+This guide explains how to configure Jenkins to use Keycloak for authentication using the dedicated `atpar-jenkins` realm.
 
 ## Overview
 
-The integration uses the OpenID Connect (OIDC) protocol through Keycloak. Users defined in the `gateway` realm can authenticate to:
-- ✅ RMS Gateway Application
-- ✅ Jenkins CI/CD
-- ✅ Any other application using the same realm
+The integration uses the OpenID Connect (OIDC) protocol through Keycloak. Users defined in the `atpar-jenkins` realm can authenticate to Jenkins CI/CD.
 
 ## Pre-configured Users
 
-The following users are pre-configured in the `gateway` realm:
+The following user is pre-configured in the `atpar-jenkins` realm:
 
-| Username | Password | Gateway Role | Jenkins Role | Access Level |
-|----------|----------|--------------|--------------|--------------|
-| `platformadmin` | `PlatformAdmin123!` | ROLE_ADMIN | jenkins-admin | Full admin access to both |
-| `gwadmin` | `gwadmin` | ROLE_ADMIN | jenkins-admin | Full admin access to both |
-| `developer` | `Developer123!` | user | jenkins-developer | Can build/view jobs |
-| `viewer` | `Viewer123!` | user | jenkins-viewer | Read-only access |
+| Username | Password | Role | Access Level |
+|----------|----------|------|--------------|
+| `admin` | `AzBy791833!` | jenkins-admin | Full admin access |
 
-> **⚠️ Important:** Change these default passwords in production!
+> **⚠️ Important:** Change this default password in production!
 
-## Jenkins Roles Mapping
+## Jenkins Roles
 
 | Keycloak Role | Jenkins Permission |
 |---------------|-------------------|
@@ -41,11 +35,11 @@ The following users are pre-configured in the `gateway` realm:
 
 ### Step 2: Configure Keycloak Client (Already Done)
 
-The `jenkins` client is pre-configured in `realm-import/gateway-realm.json` with:
+The `atpar-jenkins` client is pre-configured in `realm-import/atpar-jenkins-realm.json` with:
 
 ```
-Client ID: jenkins
-Client Secret: J3nK1nS_S3cR3t_K3y_2024!@#
+Client ID: atpar-jenkins
+Client Secret: AtP4r_J3nK1nS_S3cR3t_2024!@#
 Redirect URIs: https://jenkins.atparui.com/securityRealm/finishLogin
 ```
 
@@ -59,10 +53,10 @@ Redirect URIs: https://jenkins.atparui.com/securityRealm/finishLogin
 
    | Setting | Value |
    |---------|-------|
-   | **Client ID** | `jenkins` |
-   | **Client Secret** | `J3nK1nS_S3cR3t_K3y_2024!@#` |
+   | **Client ID** | `atpar-jenkins` |
+   | **Client Secret** | `AtP4r_J3nK1nS_S3cR3t_2024!@#` |
    | **Configuration mode** | Automatic configuration |
-   | **Well-known configuration endpoint** | `https://auth.atparui.com/realms/gateway/.well-known/openid-configuration` |
+   | **Well-known configuration endpoint** | `https://auth.atparui.com/realms/atpar-jenkins/.well-known/openid-configuration` |
    | **User name field name** | `preferred_username` |
    | **Full name field name** | `name` |
    | **Email field name** | `email` |
@@ -76,7 +70,7 @@ Redirect URIs: https://jenkins.atparui.com/securityRealm/finishLogin
    | **Scopes** | `openid profile email roles` |
    | **Enable logout** | ✅ Checked |
    | **Post logout redirect URL** | `https://jenkins.atparui.com` |
-   | **End session endpoint** | `https://auth.atparui.com/realms/gateway/protocol/openid-connect/logout` |
+   | **End session endpoint** | `https://auth.atparui.com/realms/atpar-jenkins/protocol/openid-connect/logout` |
 
 ### Step 4: Configure Authorization
 
@@ -123,7 +117,7 @@ Redirect URIs: https://jenkins.atparui.com/securityRealm/finishLogin
 
 4. You should be redirected to Keycloak login page
 
-5. Login with one of the pre-configured users (e.g., `platformadmin` / `PlatformAdmin123!`)
+5. Login with the pre-configured user (e.g., `admin` / `AzBy791833!`)
 
 6. You should be redirected back to Jenkins with appropriate permissions
 
@@ -133,11 +127,11 @@ Add these to your `.env` file for reference:
 
 ```env
 # Jenkins Keycloak Integration
-JENKINS_KEYCLOAK_CLIENT_ID=jenkins
-JENKINS_KEYCLOAK_CLIENT_SECRET=J3nK1nS_S3cR3t_K3y_2024!@#
-JENKINS_KEYCLOAK_REALM=gateway
+JENKINS_KEYCLOAK_CLIENT_ID=atpar-jenkins
+JENKINS_KEYCLOAK_CLIENT_SECRET=AtP4r_J3nK1nS_S3cR3t_2024!@#
+JENKINS_KEYCLOAK_REALM=atpar-jenkins
 JENKINS_KEYCLOAK_AUTH_URL=https://auth.atparui.com
-JENKINS_KEYCLOAK_DISCOVERY_URL=https://auth.atparui.com/realms/gateway/.well-known/openid-configuration
+JENKINS_KEYCLOAK_DISCOVERY_URL=https://auth.atparui.com/realms/atpar-jenkins/.well-known/openid-configuration
 ```
 
 ## Docker Compose Integration (Optional)
@@ -194,22 +188,23 @@ If Jenkins is running in Docker alongside Keycloak:
 
 ## Adding New Users
 
-To add new users that can access both Jenkins and Gateway:
+To add new users that can access Jenkins:
 
 ### Option 1: Via Keycloak Admin Console
 
 1. Login to Keycloak Admin Console: `https://auth.atparui.com/admin`
-2. Select the `gateway` realm
+2. Select the `atpar-jenkins` realm
 3. Go to **Users** → **Add user**
 4. Fill in user details
 5. Go to **Credentials** tab → Set password (uncheck Temporary)
 6. Go to **Role Mappings** → Assign roles:
-   - For Gateway: `ROLE_ADMIN` or `user`
-   - For Jenkins: `jenkins-admin`, `jenkins-developer`, or `jenkins-viewer`
+   - `jenkins-admin` for full access
+   - `jenkins-developer` for build access
+   - `jenkins-viewer` for read-only access
 
 ### Option 2: Update realm-import JSON
 
-Add users to `realm-import/gateway-realm.json` and re-import:
+Add users to `realm-import/atpar-jenkins-realm.json` and re-import:
 
 ```json
 {
@@ -227,7 +222,6 @@ Add users to `realm-import/gateway-realm.json` and re-import:
     }
   ],
   "realmRoles": [
-    "user",
     "jenkins-developer"
   ],
   "requiredActions": [],
@@ -251,12 +245,27 @@ Add users to `realm-import/gateway-realm.json` and re-import:
 | Service | URL | Default Admin |
 |---------|-----|---------------|
 | Keycloak Admin | https://auth.atparui.com/admin | `admin` / (from .env) |
-| Keycloak Gateway Realm | https://auth.atparui.com/realms/gateway | - |
-| Jenkins | https://jenkins.atparui.com | `platformadmin` / `PlatformAdmin123!` |
-| Gateway App | https://rmsdashboard.atparui.com | `platformadmin` / `PlatformAdmin123!` |
+| Keycloak atpar-jenkins Realm | https://auth.atparui.com/realms/atpar-jenkins | - |
+| Jenkins | https://jenkins.atparui.com | `admin` / `AzBy791833!` |
+
+## Realm Configuration Summary
+
+The `atpar-jenkins` realm contains:
+
+- **Roles:**
+  - `jenkins-admin` - Full Jenkins administration access
+  - `jenkins-developer` - Can build and view jobs
+  - `jenkins-viewer` - Read-only access
+
+- **Client:**
+  - `atpar-jenkins` - OIDC client for Jenkins authentication
+
+- **Users:**
+  - `admin` - Pre-configured with `jenkins-admin` role
 
 ## Related Documentation
 
 - [JENKINS_SETUP.md](JENKINS_SETUP.md) - Jenkins Pipeline setup
 - [GATEWAY_REALM_SETUP.md](GATEWAY_REALM_SETUP.md) - Gateway realm configuration
 - [SECURE_SETUP.md](SECURE_SETUP.md) - Security best practices
+- [CONSUL_OAUTH2_SETUP.md](CONSUL_OAUTH2_SETUP.md) - Consul OAuth2 Proxy setup
