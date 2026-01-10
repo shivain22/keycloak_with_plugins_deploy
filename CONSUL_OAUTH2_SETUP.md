@@ -1,13 +1,28 @@
 # Consul UI OAuth2 Proxy Setup Guide
 
 ## Overview
-This guide explains how to set up OAuth2 Proxy to secure the Consul UI at `https://consul.atparui.com` using Keycloak authentication.
+This guide explains how to set up OAuth2 Proxy to secure the Consul UI at `https://consul.atparui.com` using Keycloak authentication via the **atpar-infra** realm.
+
+> **Note:** Consul authentication has been moved from the `gateway` realm to the unified `atpar-infra` infrastructure realm. This allows centralized user management for all DevOps tools (Jenkins, Consul, Grafana, etc.).
 
 ## Prerequisites
 - Keycloak running at `https://auth.atparui.com`
-- Gateway realm configured with `gateway-web` client
+- `atpar-infra` realm imported (see `realm-import/atpar-infra-realm.json`)
 - SSL certificate for `consul.atparui.com` (already configured via Certbot)
 - Consul running in Docker container
+
+## Pre-configured Users
+
+The following users are pre-configured in the `atpar-infra` realm:
+
+| Username | Password | Roles | Access Level |
+|----------|----------|-------|--------------|
+| `infra-admin` | `InfraAdmin@2024!` | infra-admin | Full access |
+| `devops-lead` | `DevOps@2024!` | infra-admin | Full access |
+| `developer` | `Developer@2024!` | infra-developer | Read/Write |
+| `viewer` | `Viewer@2024!` | infra-viewer | Read-only |
+
+> **⚠️ Important:** Change these default passwords in production!
 
 ## Step 1: Generate Cookie Secret
 
@@ -30,33 +45,27 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 
 Copy the generated value and add it to your `.env` file as `OAUTH2_PROXY_COOKIE_SECRET`.
 
-## Step 2: Configure Keycloak Client
+## Step 2: Keycloak Client (Already Configured)
 
-The `gateway-web` client in the `gateway` realm needs to have the following redirect URI:
+The `consul` client is pre-configured in the `atpar-infra` realm with:
 
-1. Log into Keycloak Admin Console at `https://auth.atparui.com`
-2. Navigate to: **Clients** → **gateway-web** → **Settings**
-3. Add to **Valid Redirect URIs**:
-   ```
-   https://consul.atparui.com/oauth2/callback
-   ```
-4. Add to **Web Origins**:
-   ```
-   https://consul.atparui.com
-   ```
-5. Ensure **Standard Flow Enabled** is `ON`
-6. Click **Save**
+```
+Client ID: consul
+Client Secret: C0nSuL@InFrA2024SecureKey!
+Realm: atpar-infra
+Redirect URIs: https://consul.atparui.com/oauth2/callback
+```
 
 ## Step 3: Update Environment Variables
 
 Edit your `.env` file and set the following:
 
 ```bash
-# OAuth2 Proxy for Consul UI Security
+# OAuth2 Proxy for Consul UI Security (using atpar-infra realm)
 OAUTH2_PROXY_PORT=4180
-OAUTH2_PROXY_CLIENT_ID=gateway-web
-OAUTH2_PROXY_CLIENT_SECRET=M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h
-OAUTH2_PROXY_OIDC_ISSUER_URL=https://auth.atparui.com/realms/gateway
+OAUTH2_PROXY_CLIENT_ID=consul
+OAUTH2_PROXY_CLIENT_SECRET=C0nSuL@InFrA2024SecureKey!
+OAUTH2_PROXY_OIDC_ISSUER_URL=https://auth.atparui.com/realms/atpar-infra
 OAUTH2_PROXY_REDIRECT_URL=https://consul.atparui.com/oauth2/callback
 OAUTH2_PROXY_COOKIE_SECRET=<your-generated-secret-here>
 OAUTH2_PROXY_COOKIE_DOMAIN=consul.atparui.com
@@ -107,7 +116,7 @@ docker-compose up -d
 
 2. **Test Consul UI Access:**
    - Navigate to `https://consul.atparui.com/ui`
-   - You should be redirected to Keycloak login
+   - You should be redirected to Keycloak login (atpar-infra realm)
    - After login, you should be redirected back to Consul UI
 
 3. **Test Consul API (should remain accessible):**
@@ -124,10 +133,18 @@ Internet
    ▼
 Nginx (consul.atparui.com)
    │
-   ├─ /ui, / → OAuth2 Proxy (localhost:4180) → Keycloak Auth → Consul (consul:8500)
+   ├─ /ui, / → OAuth2 Proxy (localhost:4180) → Keycloak (atpar-infra) → Consul (consul:8500)
    │
    └─ /v1/ → Consul (192.168.0.102:8500) [Direct, no auth]
 ```
+
+## Role Mapping
+
+| Infra Role | Consul Access |
+|------------|---------------|
+| `infra-admin` | Full ACL management |
+| `infra-developer` | Read/Write services and KV |
+| `infra-viewer` | Read-only access |
 
 ## Troubleshooting
 
@@ -139,7 +156,7 @@ Nginx (consul.atparui.com)
 ### Issue: Redirect loop or authentication fails
 - Verify Keycloak client has correct redirect URI: `https://consul.atparui.com/oauth2/callback`
 - Check that `OAUTH2_PROXY_REDIRECT_URL` matches exactly
-- Verify `OAUTH2_PROXY_OIDC_ISSUER_URL` is correct
+- Verify `OAUTH2_PROXY_OIDC_ISSUER_URL` is `https://auth.atparui.com/realms/atpar-infra`
 - Check Keycloak client secret matches `OAUTH2_PROXY_CLIENT_SECRET`
 
 ### Issue: Consul UI shows but API doesn't work
@@ -155,9 +172,18 @@ Nginx (consul.atparui.com)
 ## Security Notes
 
 - **Cookie Secret**: Must be a secure random 32-byte value. Never commit to version control.
-- **Client Secret**: The `gateway-web` client secret is used. Ensure it's kept secure.
+- **Client Secret**: Keep the `consul` client secret secure.
 - **API Access**: The `/v1/` API endpoints remain unprotected. Consider adding IP whitelisting if needed.
 - **HTTPS Only**: All traffic should use HTTPS (already configured via Certbot).
+
+## Migration from gateway Realm
+
+If you were previously using the `gateway` realm for Consul authentication:
+
+1. Update `.env` with new values (see Step 3)
+2. Restart oauth2-proxy: `docker-compose restart oauth2-proxy`
+3. Users will need to log in again
+4. Old users from `gateway` realm won't have access - create them in `atpar-infra` realm
 
 ## Rollback
 
@@ -183,9 +209,14 @@ If you need to rollback:
    }
    ```
 
+## Related Documentation
+
+- [INFRASTRUCTURE_REALM_SETUP.md](INFRASTRUCTURE_REALM_SETUP.md) - Infrastructure realm overview
+- [JENKINS_KEYCLOAK_INTEGRATION.md](JENKINS_KEYCLOAK_INTEGRATION.md) - Jenkins setup (same realm)
+- [SECURE_SETUP.md](SECURE_SETUP.md) - Security best practices
+
 ## References
 
 - [OAuth2 Proxy Documentation](https://oauth2-proxy.github.io/oauth2-proxy/)
 - [Keycloak OIDC Configuration](https://www.keycloak.org/docs/latest/securing_apps/)
 - [Consul UI Documentation](https://www.consul.io/docs/agent/web-ui)
-

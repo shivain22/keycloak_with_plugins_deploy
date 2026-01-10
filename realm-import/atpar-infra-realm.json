@@ -1,15 +1,15 @@
 {
-  "realm": "gateway",
+  "realm": "atpar-infra",
   "enabled": true,
-  "displayName": "Gateway Realm",
-  "registrationAllowed": true,
+  "displayName": "ATPAR Infrastructure Realm",
+  "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "editUsernameAllowed": false,
   "rememberMe": true,
   "sslRequired": "external",
-  "accessTokenLifespan": 300,
+  "accessTokenLifespan": 1800,
   "ssoSessionIdleTimeout": 1800,
   "ssoSessionMaxLifespan": 36000,
   "loginTheme": "rms-auth-theme-plugin",
@@ -19,33 +19,55 @@
   "roles": {
     "realm": [
       {
-        "name": "ROLE_ADMIN",
-        "description": "Administrator role for gateway operations",
+        "name": "infra-admin",
+        "description": "Full administrator access to all infrastructure tools (Jenkins, Consul, Grafana, etc.)",
         "composite": false
       },
       {
-        "name": "user",
-        "description": "Default user role"
+        "name": "infra-developer",
+        "description": "Developer access - can build/deploy in Jenkins, read/write in Consul, edit in Grafana",
+        "composite": false
+      },
+      {
+        "name": "infra-viewer",
+        "description": "Read-only access to all infrastructure tools",
+        "composite": false
+      },
+      {
+        "name": "jenkins-admin",
+        "description": "Jenkins specific: Full admin access (maps to infra-admin for Jenkins)",
+        "composite": false
+      },
+      {
+        "name": "jenkins-developer",
+        "description": "Jenkins specific: Can build and view jobs",
+        "composite": false
+      },
+      {
+        "name": "jenkins-viewer",
+        "description": "Jenkins specific: Read-only access",
+        "composite": false
       }
     ]
   },
   "users": [
     {
-      "username": "gwadmin",
+      "username": "infra-admin",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "Gateway",
+      "firstName": "Infrastructure",
       "lastName": "Administrator",
-      "email": "gwadmin@gateway.local",
+      "email": "infra-admin@atparui.com",
       "credentials": [
         {
           "type": "password",
-          "value": "gwadmin",
+          "value": "InfraAdmin@2024!",
           "temporary": false
         }
       ],
       "realmRoles": [
-        "ROLE_ADMIN"
+        "infra-admin",
+        "jenkins-admin"
       ],
       "requiredActions": [],
       "attributes": {
@@ -53,21 +75,22 @@
       }
     },
     {
-      "username": "platformadmin",
+      "username": "devops-lead",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "Platform",
-      "lastName": "Administrator",
-      "email": "platformadmin@atparui.com",
+      "firstName": "DevOps",
+      "lastName": "Lead",
+      "email": "devops@atparui.com",
       "credentials": [
         {
           "type": "password",
-          "value": "PlatformAdmin123!",
+          "value": "DevOps@2024!",
           "temporary": false
         }
       ],
       "realmRoles": [
-        "ROLE_ADMIN"
+        "infra-admin",
+        "jenkins-admin"
       ],
       "requiredActions": [],
       "attributes": {
@@ -78,18 +101,19 @@
       "username": "developer",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "Dev",
+      "firstName": "Developer",
       "lastName": "User",
       "email": "developer@atparui.com",
       "credentials": [
         {
           "type": "password",
-          "value": "Developer123!",
+          "value": "Developer@2024!",
           "temporary": false
         }
       ],
       "realmRoles": [
-        "user"
+        "infra-developer",
+        "jenkins-developer"
       ],
       "requiredActions": [],
       "attributes": {
@@ -100,18 +124,19 @@
       "username": "viewer",
       "enabled": true,
       "emailVerified": true,
-      "firstName": "View",
+      "firstName": "Viewer",
       "lastName": "User",
       "email": "viewer@atparui.com",
       "credentials": [
         {
           "type": "password",
-          "value": "Viewer123!",
+          "value": "Viewer@2024!",
           "temporary": false
         }
       ],
       "realmRoles": [
-        "user"
+        "infra-viewer",
+        "jenkins-viewer"
       ],
       "requiredActions": [],
       "attributes": {
@@ -121,56 +146,24 @@
   ],
   "clients": [
     {
-      "clientId": "gateway-admin-client",
-      "name": "Gateway Admin Client",
-      "description": "Service account client for gateway to manage realms via Admin API",
+      "clientId": "jenkins",
+      "name": "Jenkins CI/CD",
+      "description": "OIDC client for Jenkins CI/CD authentication",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "K8mN2pQ7rT5vW9xZ1aB3cD4eF6gH8j",
-      "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false,
-      "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "publicClient": false,
-      "protocol": "openid-connect",
-      "attributes": {
-        "access.token.lifespan": "300"
-      },
-      "defaultClientScopes": [
-        "openid",
-        "profile",
-        "email",
-        "web-origins",
-        "role_list",
-        "roles",
-        "gateway-roles"
-      ],
-      "optionalClientScopes": [
-        "address",
-        "phone",
-        "offline_access",
-        "microprofile-jwt"
-      ]
-    },
-    {
-      "clientId": "gateway-web",
-      "name": "Gateway Web Client",
-      "description": "Web client for gateway application",
-      "enabled": true,
-      "clientAuthenticatorType": "client-secret",
-      "secret": "M5nP8qR2sT6uV9wX1yZ3aC4dE7fG0h",
+      "secret": "AtP4rJ3nK1nSS3cR3t2024SecureKey",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": true,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:9293",
-      "rootUrl": "http://localhost:9293",
-      "adminUrl": "http://localhost:9293",
+      "baseUrl": "https://jenkins.atparui.com",
+      "rootUrl": "https://jenkins.atparui.com",
+      "adminUrl": "https://jenkins.atparui.com",
       "attributes": {
         "pkce.code.challenge.method": "",
-        "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000,https://rmsdashboard.atparui.com"
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "https://jenkins.atparui.com,http://localhost:8180"
       },
       "defaultClientScopes": [
         "openid",
@@ -179,7 +172,7 @@
         "web-origins",
         "role_list",
         "roles",
-        "gateway-roles"
+        "infra-roles"
       ],
       "optionalClientScopes": [
         "address",
@@ -188,39 +181,36 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:9293",
-        "http://localhost:9000",
-        "https://rmsgateway.atparui.com",
-        "https://rmsdashboard.atparui.com",
+        "https://jenkins.atparui.com",
+        "http://localhost:8180",
         "*"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc",
-        "https://rmsdashboard.atparui.com/login/oauth2/code/oidc",
-        "https://rmsgateway.atparui.com",
-        "https://rmsgateway.atparui.com/login/oauth2/code/oidc",
-        "*"
+        "https://jenkins.atparui.com/securityRealm/finishLogin",
+        "http://localhost:8180/securityRealm/finishLogin",
+        "https://jenkins.atparui.com/*",
+        "http://localhost:8180/*"
       ]
     },
     {
-      "clientId": "gateway-mobile",
-      "name": "Gateway Mobile Client",
-      "description": "Mobile client for gateway application with PKCE",
+      "clientId": "consul",
+      "name": "Consul UI",
+      "description": "OAuth2 Proxy client for Consul UI authentication",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "L9mN3pQ6rT8vW2xZ4aB5cD7eF9gH1j",
+      "secret": "C0nSuL@InFrA2024SecureKey!",
       "publicClient": false,
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "protocol": "openid-connect",
-      "baseUrl": "http://localhost:9293",
-      "rootUrl": "http://localhost:9293",
-      "adminUrl": "http://localhost:9293",
+      "baseUrl": "https://consul.atparui.com",
+      "rootUrl": "https://consul.atparui.com",
+      "adminUrl": "https://consul.atparui.com",
       "attributes": {
-        "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:9000,https://rmsdashboard.atparui.com"
+        "pkce.code.challenge.method": "",
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "https://consul.atparui.com"
       },
       "defaultClientScopes": [
         "openid",
@@ -229,7 +219,7 @@
         "web-origins",
         "role_list",
         "roles",
-        "gateway-roles"
+        "infra-roles"
       ],
       "optionalClientScopes": [
         "address",
@@ -238,31 +228,33 @@
         "microprofile-jwt"
       ],
       "webOrigins": [
-        "http://localhost:9293",
-        "http://localhost:9000",
-        "https://rmsgateway.atparui.com",
-        "https://rmsdashboard.atparui.com"
+        "https://consul.atparui.com",
+        "*"
       ],
       "redirectUris": [
-        "http://localhost:9000/login/oauth2/code/oidc",
-        "https://rmsdashboard.atparui.com/login/oauth2/code/oidc"
+        "https://consul.atparui.com/oauth2/callback",
+        "https://consul.atparui.com/*"
       ]
     },
     {
-      "clientId": "rms-service",
-      "name": "RMS Service Client",
-      "description": "Service account client for RMS service",
+      "clientId": "grafana",
+      "name": "Grafana Monitoring",
+      "description": "OIDC client for Grafana monitoring dashboard (future use)",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "R7sT2vW5xZ8aB1cD4eF7gH0jK3mN6pQ",
-      "serviceAccountsEnabled": true,
-      "standardFlowEnabled": false,
+      "secret": "GrAfAnA@InFrA2024SecureKey!",
+      "publicClient": false,
+      "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "publicClient": false,
       "protocol": "openid-connect",
+      "baseUrl": "https://grafana.atparui.com",
+      "rootUrl": "https://grafana.atparui.com",
+      "adminUrl": "https://grafana.atparui.com",
       "attributes": {
-        "access.token.lifespan": "300"
+        "pkce.code.challenge.method": "",
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "https://grafana.atparui.com"
       },
       "defaultClientScopes": [
         "openid",
@@ -271,13 +263,67 @@
         "web-origins",
         "role_list",
         "roles",
-        "gateway-roles"
+        "infra-roles"
       ],
       "optionalClientScopes": [
         "address",
         "phone",
         "offline_access",
         "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "https://grafana.atparui.com",
+        "http://localhost:3000",
+        "*"
+      ],
+      "redirectUris": [
+        "https://grafana.atparui.com/login/generic_oauth",
+        "http://localhost:3000/login/generic_oauth",
+        "https://grafana.atparui.com/*"
+      ]
+    },
+    {
+      "clientId": "argocd",
+      "name": "ArgoCD GitOps",
+      "description": "OIDC client for ArgoCD GitOps (future use)",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "ArG0CD@InFrA2024SecureKey!",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "baseUrl": "https://argocd.atparui.com",
+      "rootUrl": "https://argocd.atparui.com",
+      "adminUrl": "https://argocd.atparui.com",
+      "attributes": {
+        "pkce.code.challenge.method": "",
+        "access.token.lifespan": "1800",
+        "post.logout.redirect.uris": "https://argocd.atparui.com"
+      },
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "web-origins",
+        "role_list",
+        "roles",
+        "infra-roles"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "webOrigins": [
+        "https://argocd.atparui.com",
+        "*"
+      ],
+      "redirectUris": [
+        "https://argocd.atparui.com/auth/callback",
+        "https://argocd.atparui.com/*"
       ]
     }
   ],
@@ -416,8 +462,8 @@
       ]
     },
     {
-      "name": "gateway-roles",
-      "description": "Custom scope to add roles as flat array in token claims for gateway",
+      "name": "infra-roles",
+      "description": "Custom scope to add infrastructure roles as flat array in token claims",
       "protocol": "openid-connect",
       "attributes": {
         "include.in.token.scope": "false",
@@ -438,6 +484,21 @@
             "id.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+        },
+        {
+          "name": "groups-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "user.attribute": "",
+            "claim.name": "groups",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     }
@@ -450,78 +511,12 @@
     "roles",
     "web-origins",
     "acr",
-    "gateway-roles"
+    "infra-roles"
   ],
   "defaultOptionalClientScopes": [
     "offline_access",
     "address",
     "phone",
     "microprofile-jwt"
-  ],
-  "authenticationFlows": [
-    {
-      "alias": "browser with phone auto registration",
-      "description": "Browser flow with Phone Username Password Form with Auto Registration",
-      "providerId": "basic-flow",
-      "topLevel": true,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticator": "auth-cookie",
-          "requirement": "ALTERNATIVE",
-          "priority": 10,
-          "authenticatorFlow": false
-        },
-        {
-          "authenticator": "identity-provider-redirector",
-          "requirement": "ALTERNATIVE",
-          "priority": 20,
-          "authenticatorFlow": false,
-          "userSetupAllowed": false
-        },
-        {
-          "authenticatorFlow": true,
-          "requirement": "ALTERNATIVE",
-          "priority": 30,
-          "flowAlias": "forms"
-        }
-      ]
-    },
-    {
-      "alias": "forms",
-      "description": "Forms sub-flow",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticator": "auth-phone-auto-reg-form",
-          "requirement": "REQUIRED",
-          "priority": 10,
-          "authenticatorFlow": false,
-          "userSetupAllowed": false,
-          "authenticatorConfig": "phone-auto-reg-config"
-        }
-      ]
-    }
-  ],
-  "authenticatorConfig": [
-    {
-      "alias": "phone-auto-reg-config",
-      "config": {
-        "enableAutoRegistration": "true",
-        "autoRegPhoneAsUsername": "true",
-        "loginWithPhoneVerify": "true",
-        "loginWithPhoneNumber": "true"
-      }
-    }
-  ],
-  "browserFlow": "browser with phone auto registration",
-  "registrationFlow": "registration",
-  "directGrantFlow": "direct grant",
-  "resetCredentialsFlow": "reset credentials",
-  "clientAuthenticationFlow": "clients",
-  "dockerAuthenticationFlow": "docker auth"
+  ]
 }
-
-
