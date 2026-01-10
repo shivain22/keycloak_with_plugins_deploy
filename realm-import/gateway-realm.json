@@ -1,7 +1,7 @@
 {
   "realm": "gateway",
   "enabled": true,
-  "displayName": "Gateway Realm",
+  "displayName": "ATPAR Console",
   "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
@@ -173,8 +173,7 @@
       },
       "postLogoutRedirectUris": [
         "http://localhost:9000",
-        "https://rmsdashboard.atparui.com",
-        "https://rmsgateway.atparui.com"
+        "https://console.atparui.com"
       ],
       "defaultClientScopes": [
         "openid",
@@ -194,15 +193,13 @@
       "webOrigins": [
         "http://localhost:9293",
         "http://localhost:9000",
-        "https://rmsgateway.atparui.com",
-        "https://rmsdashboard.atparui.com",
+        "https://console.atparui.com",
         "*"
       ],
       "redirectUris": [
         "http://localhost:9000/login/oauth2/code/oidc",
-        "https://rmsdashboard.atparui.com/login/oauth2/code/oidc",
-        "https://rmsgateway.atparui.com",
-        "https://rmsgateway.atparui.com/login/oauth2/code/oidc",
+        "https://console.atparui.com/login/oauth2/code/oidc",
+        "https://console.atparui.com",
         "*"
       ]
     },
@@ -227,7 +224,7 @@
       },
       "postLogoutRedirectUris": [
         "http://localhost:9000",
-        "https://rmsdashboard.atparui.com"
+        "https://console.atparui.com"
       ],
       "defaultClientScopes": [
         "openid",
@@ -247,12 +244,11 @@
       "webOrigins": [
         "http://localhost:9293",
         "http://localhost:9000",
-        "https://rmsgateway.atparui.com",
-        "https://rmsdashboard.atparui.com"
+        "https://console.atparui.com"
       ],
       "redirectUris": [
         "http://localhost:9000/login/oauth2/code/oidc",
-        "https://rmsdashboard.atparui.com/login/oauth2/code/oidc"
+        "https://console.atparui.com/login/oauth2/code/oidc"
       ]
     },
     {
